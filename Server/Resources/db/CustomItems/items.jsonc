@@ -1,0 +1,193 @@
+{
+  "6abd70774de828bc9dfb075b": {
+    "itemTplToClone": "5c064c400db834001d23f468",
+    "parentId": "55818b224bdc2dde698b456f",
+    "handbookParentId": "5b5f755f86f77447ec5d770e",
+    "overrideProperties": {
+      "Prefab": {
+        "path": "7b_magic_mount.bundle",
+        "rcid": ""
+      },
+      "Width": 2,
+      "Height": 1,
+      "Weight": 1.5,
+      "Slots": [
+        {
+          "_id": "6abd77a4e82efef3584fa480",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_scope_000",
+          "_parent": "6abd70774de828bc9dfb075b",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "58491f3324597764bc48fa02",
+                  "59f9d81586f7744c7506ee62",
+                  "5d2da1e948f035477b1ce2ba",
+                  "60a23797a37c940de7062d02",
+                  "64785e7c19d732620e045e15"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        },
+        {
+          "_id": "6abd7b87e52bf51d3bff4353",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_scope_001",
+          "_parent": "6abd70774de828bc9dfb075b",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "6abd93f8c08b8d62d4aa495f"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        },
+        {
+          "_id": "6abd77a4e82efef3584fa480",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_scope_002",
+          "_parent": "6abd70774de828bc9dfb075b",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "58491f3324597764bc48fa02"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        }
+      ]
+    },
+    "locales": {
+      "en": {
+        "name": "Magic Reflex Mount",
+        "shortName": "MRM",
+        "description": "Allows mounting reflex sight with magnifier and clip-on thermal"
+      }
+    },
+    "addtoModSlots": true,
+    "modSlot": [
+      "mod_scope"
+    ],
+    "fleaPriceRoubles": 18890,
+    "handbookPriceRoubles": 13440,
+    "inheritParentData": true,
+    "inheritExtensionData": true
+  },
+  "6abdaebc1dc9920e7e5566f5": {
+    "itemTplToClone": "5c064c400db834001d23f468",
+    "parentId": "55818b224bdc2dde698b456f",
+    "handbookParentId": "5b5f755f86f77447ec5d770e",
+    "overrideProperties": {
+      "Prefab": {
+        "path": "7b_magic_mount_optic.bundle",
+        "rcid": ""
+      },
+      "Width": 2,
+      "Height": 1,
+      "Weight": 1.5,
+      "Slots": [
+        {
+          "_id": "6abd77a4e82efef3584fa480",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_scope_000",
+          "_parent": "6abdaebc1dc9920e7e5566f5",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "6567e751a715f85433025998",
+                  "5c86592b2e2216000e69e77c",
+                  "5a37ca54c4a282000d72296a",
+                  "6171407e50224f204c1da3c5",
+                  "61713cc4d8e3106d9806c109"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        },
+        {
+          "_id": "6abd7b87e52bf51d3bff4353",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_scope_001",
+          "_parent": "6abdaebc1dc9920e7e5566f5",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "5d1b5e94d7ad1a2b865a96b0",
+                  "5a1ead28fcdbcb001912fa9f",
+                  "63fc449f5bd61c6cf3784a88"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        }
+      ]
+    },
+    "locales": {
+      "en": {
+        "name": "Magic Optic Mount",
+        "shortName": "MOM",
+        "description": "Allows mounting optic sight with clip-on thermal"
+      }
+    },
+    "addtoModSlots": true,
+    "modSlot": [
+      "mod_scope"
+    ],
+    "fleaPriceRoubles": 18890,
+    "handbookPriceRoubles": 13440,
+    "inheritParentData": true,
+    "inheritExtensionData": true
+  },
+  "6abd93f8c08b8d62d4aa495f": {
+    "itemTplToClone": "5c07dd120db834001c39092d",
+    "parentId": "55818ad54bdc2ddc698b4569",
+    "handbookParentId": "5b5f742686f774093e6cb4ff",
+    "overrideProperties": {
+      "Prefab": {
+        "path": "7b_magnifier.bundle",
+        "rcid": ""
+      },
+      "Width": 1,
+      "Height": 1,
+      "Weight": 0.544
+    },
+    "locales": {
+      "en": {
+        "name": "Magnifier",
+        "shortName": "Magnifier",
+        "description": "Magnifier"
+      }
+    },
+    "addtoModSlots": true,
+    "modSlot": [
+      "mod_scope_001"
+    ],
+    "fleaPriceRoubles": 64000,
+    "handbookPriceRoubles": 35000,
+    "inheritParentData": true,
+    "inheritExtensionData": true
+  }
+}
