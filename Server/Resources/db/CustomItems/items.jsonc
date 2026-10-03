@@ -94,7 +94,81 @@
       },
       "Width": 3,
       "Height": 3,
-      "Weight": 1.5
+      "Weight": 1.5,
+      "Slots": [
+        {
+          "_id": "6ac05833ad42cd133c8ab656",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_neck",
+          "_parent": "6ac023b61c5395de06b9403d",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "6ac04ed7e97c040d9b4a6b1f"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        },
+        {
+          "_id": "6ac023b61c5395de06b9403d",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_arm_left",
+          "_parent": "6ac023b61c5395de06b9403d",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "6ac04ebca3093ae074e24cb5"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        },
+        {
+          "_id": "6ac023b61c5395de06b9403d",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_arm_right",
+          "_parent": "6ac023b61c5395de06b9403d",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "6ac04ec4ee2e254a8466078e"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        },
+        {
+          "_id": "6ac023b61c5395de06b9403d",
+          "_mergeSlotWithChildren": false,
+          "_name": "mod_groin",
+          "_parent": "6ac023b61c5395de06b9403d",
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "6ac04ecd24fa6b690f45065a"
+                ],
+                "Shift": 0
+              }
+            ]
+          },
+          "_proto": "55d30c4c4bdc2db4468b457e",
+          "_required": false
+        }
+      ]
     },
     "locales": {
       "en": {
