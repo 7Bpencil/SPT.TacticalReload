@@ -1,7 +1,7 @@
 {
     "manifest": [
         {
-            "key": "7b_magic_mount.bundle",
+            "key": "7b_modular_rigs_arm_left.bundle",
             "dependencyKeys": [
                 "shaders",
                 "cubemaps",
@@ -9,7 +9,7 @@
             ]
         },
         {
-            "key": "7b_magic_mount_optic.bundle",
+            "key": "7b_modular_rigs_arm_right.bundle",
             "dependencyKeys": [
                 "shaders",
                 "cubemaps",
@@ -17,7 +17,23 @@
             ]
         },
         {
-            "key": "7b_magnifier.bundle",
+            "key": "7b_modular_rigs_groin.bundle",
+            "dependencyKeys": [
+                "shaders",
+                "cubemaps",
+                "assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+        },
+        {
+            "key": "7b_modular_rigs_main.bundle",
+            "dependencyKeys": [
+                "shaders",
+                "cubemaps",
+                "assets/commonassets/physics/physicsmaterials.bundle"
+            ]
+        },
+        {
+            "key": "7b_modular_rigs_neck.bundle",
             "dependencyKeys": [
                 "shaders",
                 "cubemaps",
