@@ -100,6 +100,25 @@
       "Weight": 1.5,
       "Slots": [
         {
+          "_name": "Front_plate",
+          "_proto": "64479fdf9731c8fadc0642c1",
+          "_mergeSlotWithChildren": true,
+          "_props": {
+            "filters": [
+              {
+                "Filter": [
+                  "655746010177119f4a097ff7"
+                ],
+                "Plate": "655746010177119f4a097ff7",
+                "armorPlateColliders": [
+                  "Plate_Granit_SAPI_chest"
+                ],
+                "bluntDamageReduceFromSoftArmor": true
+              }
+            ]
+          }
+        },
+        {
           "_name": "Collar",
           "_proto": "64479fdf9731c8fadc0642c1",
           "_mergeSlotWithChildren": true,
