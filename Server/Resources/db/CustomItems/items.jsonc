@@ -1,7 +1,7 @@
 {
   "6ac04ebca3093ae074e24cb5": {
-    "itemTplToClone": "5b3f3ade86f7746b6b790d8e",
-    "parentId": "5b3f15d486f77432d0509248",
+    "itemTplToClone": "5d6d3be5a4b9361bc73bc763",
+    "parentId": "57bef4c42459772e8d35a53b",
     "handbookParentId": "5b5f704686f77447ec5d76d7",
     "overrideProperties": {
       "Prefab": {
@@ -10,7 +10,11 @@
       },
       "Width": 1,
       "Height": 1,
-      "Weight": 1.5
+      "Weight": 1.5,
+      "armorClass": "3",
+      "armorColliders": [
+        "LeftUpperArm"
+      ]
     },
     "locales": {
       "en": {
@@ -19,17 +23,14 @@
         "description": "Description"
       }
     },
-    "addtoInventorySlots": [
-      "ArmBand"
-    ],
     "fleaPriceRoubles": 18890,
     "handbookPriceRoubles": 13440,
     "inheritParentData": true,
     "inheritExtensionData": true
   },
   "6ac04ec4ee2e254a8466078e": {
-    "itemTplToClone": "5b3f3ade86f7746b6b790d8e",
-    "parentId": "5b3f15d486f77432d0509248",
+    "itemTplToClone": "5d6d3be5a4b9361bc73bc763",
+    "parentId": "57bef4c42459772e8d35a53b",
     "handbookParentId": "5b5f704686f77447ec5d76d7",
     "overrideProperties": {
       "Prefab": {
@@ -38,7 +39,11 @@
       },
       "Width": 1,
       "Height": 1,
-      "Weight": 1.5
+      "Weight": 1.5,
+      "armorClass": "3",
+      "armorColliders": [
+        "RightUpperArm"
+      ]
     },
     "locales": {
       "en": {
@@ -47,17 +52,14 @@
         "description": "Description"
       }
     },
-    "addtoInventorySlots": [
-      "ArmBand"
-    ],
     "fleaPriceRoubles": 18890,
     "handbookPriceRoubles": 13440,
     "inheritParentData": true,
     "inheritExtensionData": true
   },
   "6ac04ecd24fa6b690f45065a": {
-    "itemTplToClone": "5b3f3ade86f7746b6b790d8e",
-    "parentId": "5b3f15d486f77432d0509248",
+    "itemTplToClone": "5d6d3be5a4b9361bc73bc763",
+    "parentId": "57bef4c42459772e8d35a53b",
     "handbookParentId": "5b5f704686f77447ec5d76d7",
     "overrideProperties": {
       "Prefab": {
@@ -66,7 +68,11 @@
       },
       "Width": 2,
       "Height": 2,
-      "Weight": 1.5
+      "Weight": 1.5,
+      "armorClass": "3",
+      "armorColliders": [
+        "Pelvis"
+      ]
     },
     "locales": {
       "en": {
@@ -75,9 +81,6 @@
         "description": "Description"
       }
     },
-    "addtoInventorySlots": [
-      "ArmBand"
-    ],
     "fleaPriceRoubles": 18890,
     "handbookPriceRoubles": 13440,
     "inheritParentData": true,
@@ -186,8 +189,8 @@
     "inheritExtensionData": true
   },
   "6ac04ed7e97c040d9b4a6b1f": {
-    "itemTplToClone": "5b3f3ade86f7746b6b790d8e",
-    "parentId": "5b3f15d486f77432d0509248",
+    "itemTplToClone": "5d6d3be5a4b9361bc73bc763",
+    "parentId": "57bef4c42459772e8d35a53b",
     "handbookParentId": "5b5f704686f77447ec5d76d7",
     "overrideProperties": {
       "Prefab": {
@@ -196,7 +199,12 @@
       },
       "Width": 2,
       "Height": 1,
-      "Weight": 1.5
+      "Weight": 1.5,
+      "armorClass": "3",
+      "armorColliders": [
+        "NeckFront",
+        "NeckBack"
+      ]
     },
     "locales": {
       "en": {
@@ -205,9 +213,6 @@
         "description": "Description"
       }
     },
-    "addtoInventorySlots": [
-      "ArmBand"
-    ],
     "fleaPriceRoubles": 18890,
     "handbookPriceRoubles": 13440,
     "inheritParentData": true,
