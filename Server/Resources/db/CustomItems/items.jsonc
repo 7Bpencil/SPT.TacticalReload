@@ -15,8 +15,8 @@
     "locales": {
       "en": {
         "name": "Modular Arm Left",
-        "shortName": "MM",
-        "description": "Main armor"
+        "shortName": "MAL",
+        "description": "Description"
       }
     },
     "addtoInventorySlots": [
@@ -43,8 +43,8 @@
     "locales": {
       "en": {
         "name": "Modular Arm Right",
-        "shortName": "MM",
-        "description": "Main armor"
+        "shortName": "MAR",
+        "description": "Description"
       }
     },
     "addtoInventorySlots": [
@@ -71,8 +71,8 @@
     "locales": {
       "en": {
         "name": "Modular Groin",
-        "shortName": "MM",
-        "description": "Main armor"
+        "shortName": "MG",
+        "description": "Description"
       }
     },
     "addtoInventorySlots": [
@@ -174,7 +174,7 @@
       "en": {
         "name": "Modular Main",
         "shortName": "MM",
-        "description": "Main armor"
+        "description": "Description"
       }
     },
     "addtoInventorySlots": [
@@ -201,8 +201,8 @@
     "locales": {
       "en": {
         "name": "Modular Neck",
-        "shortName": "MM",
-        "description": "Main armor"
+        "shortName": "MN",
+        "description": "Description"
       }
     },
     "addtoInventorySlots": [
