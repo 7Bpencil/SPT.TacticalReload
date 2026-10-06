@@ -87,9 +87,9 @@
     "inheritExtensionData": true
   },
   "6ac023b61c5395de06b9403d": {
-    "itemTplToClone": "5b3f3ade86f7746b6b790d8e",
-    "parentId": "5b3f15d486f77432d0509248",
-    "handbookParentId": "5b5f704686f77447ec5d76d7",
+    "itemTplToClone": "5d5d87f786f77427997cfaef",
+    "parentId": "5448e5284bdc2dcb718b4567",
+    "handbookParentId": "5b5f6f8786f77447ed563642",
     "overrideProperties": {
       "Prefab": {
         "path": "7b_modular_rigs_main.bundle",
@@ -100,76 +100,77 @@
       "Weight": 1.5,
       "Slots": [
         {
-          "_id": "6ac05833ad42cd133c8ab656",
-          "_mergeSlotWithChildren": false,
-          "_name": "mod_neck",
-          "_parent": "6ac023b61c5395de06b9403d",
+          "_name": "Collar",
+          "_proto": "64479fdf9731c8fadc0642c1",
+          "_mergeSlotWithChildren": true,
           "_props": {
             "filters": [
               {
                 "Filter": [
                   "6ac04ed7e97c040d9b4a6b1f"
                 ],
-                "Shift": 0
+                "Plate": "6ac04ed7e97c040d9b4a6b1f",
+                "armorColliders": [
+                  "NeckFront",
+                  "NeckBack"
+                ]
               }
             ]
-          },
-          "_proto": "55d30c4c4bdc2db4468b457e",
-          "_required": false
+          }
         },
         {
-          "_id": "6ac023b61c5395de06b9403d",
-          "_mergeSlotWithChildren": false,
-          "_name": "mod_arm_left",
-          "_parent": "6ac023b61c5395de06b9403d",
+          "_name": "Shoulder_l",
+          "_proto": "64479fdf9731c8fadc0642c1",
+          "_mergeSlotWithChildren": true,
           "_props": {
             "filters": [
               {
                 "Filter": [
                   "6ac04ebca3093ae074e24cb5"
                 ],
-                "Shift": 0
+                "Plate": "6ac04ebca3093ae074e24cb5",
+                "armorColliders": [
+                  "LeftUpperArm"
+                ]
               }
             ]
-          },
-          "_proto": "55d30c4c4bdc2db4468b457e",
-          "_required": false
+          }
         },
         {
-          "_id": "6ac023b61c5395de06b9403d",
-          "_mergeSlotWithChildren": false,
-          "_name": "mod_arm_right",
-          "_parent": "6ac023b61c5395de06b9403d",
+          "_name": "Shoulder_r",
+          "_proto": "64479fdf9731c8fadc0642c1",
+          "_mergeSlotWithChildren": true,
           "_props": {
             "filters": [
               {
                 "Filter": [
                   "6ac04ec4ee2e254a8466078e"
                 ],
-                "Shift": 0
+                "Plate": "6ac04ec4ee2e254a8466078e",
+                "armorColliders": [
+                  "RightUpperArm"
+                ]
               }
             ]
-          },
-          "_proto": "55d30c4c4bdc2db4468b457e",
-          "_required": false
+          }
         },
         {
-          "_id": "6ac023b61c5395de06b9403d",
-          "_mergeSlotWithChildren": false,
-          "_name": "mod_groin",
-          "_parent": "6ac023b61c5395de06b9403d",
+          "_name": "Groin",
+          "_proto": "64479fdf9731c8fadc0642c1",
+          "_mergeSlotWithChildren": true,
           "_props": {
             "filters": [
               {
                 "Filter": [
                   "6ac04ecd24fa6b690f45065a"
                 ],
-                "Shift": 0
+                "Plate": "6ac04ecd24fa6b690f45065a",
+                "armorColliders": [
+                  "Pelvis"
+                ]
               }
             ]
-          },
-          "_proto": "55d30c4c4bdc2db4468b457e",
-          "_required": false
+          }
         }
       ]
     },
@@ -180,9 +181,6 @@
         "description": "Description"
       }
     },
-    "addtoInventorySlots": [
-      "ArmBand"
-    ],
     "fleaPriceRoubles": 18890,
     "handbookPriceRoubles": 13440,
     "inheritParentData": true,
