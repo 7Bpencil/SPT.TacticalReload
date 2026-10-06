@@ -44,9 +44,9 @@ using GPUInstancer;
 using Koenigz.PerfectCulling.EFT;
 using FirearmController = EFT.Player.FirearmController;
 
-namespace SevenBoldPencil.ModularRigs;
+namespace SevenBoldPencil.ModularVests;
 
-[BepInPlugin("7Bpencil.ModularRigs", "7Bpencil.ModularRigs", "0.0.1")]
+[BepInPlugin("7Bpencil.ModularVests", "7Bpencil.ModularVests", "0.0.1")]
 public class Plugin : BaseUnityPlugin
 {
 	public static Plugin Instance;

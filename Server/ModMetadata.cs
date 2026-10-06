@@ -8,12 +8,12 @@
 using SPTarkov.Server.Core.Models.Spt.Mod;
 using Range = SemanticVersioning.Range;
 
-namespace SevenBoldPencil.ModularRigs;
+namespace SevenBoldPencil.ModularVests;
 
 public record ModMetadata : IModMetadata
 {
-    public string ModGuid { get; init; } = "7Bpencil.ModularRigs";
-    public string Name { get; init; } = "7Bpencil.ModularRigs";
+    public string ModGuid { get; init; } = "7Bpencil.ModularVests";
+    public string Name { get; init; } = "7Bpencil.ModularVests";
     public string Author { get; init; } = "7Bpencil";
     public List<string>? Contributors { get; init; } = null;
     public SemanticVersioning.Version Version { get; init; } = new("0.0.1");

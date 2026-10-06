@@ -6,8 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
-    <OutPath>$(SPTPath)\SPT_Runtime\user\mods\7Bpencil.ModularRigs</OutPath>
-    <StagePath>..\Stage\SPT_Runtime\user\mods\7Bpencil.ModularRigs</StagePath>
+    <OutPath>$(SPTPath)\SPT_Runtime\user\mods\7Bpencil.ModularVests</OutPath>
+    <StagePath>..\Stage\SPT_Runtime\user\mods\7Bpencil.ModularVests</StagePath>
     <AssemblySearchPaths>
       $(AssemblySearchPaths);
       $(SPTPath)\SPT_Runtime;

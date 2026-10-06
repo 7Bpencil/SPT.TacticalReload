@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Authors>7Bpencil</Authors>
     <Copyright>Copyright (c) 7Bpencil 2026</Copyright>
-    <AssemblyName>7Bpencil.ModularRigs</AssemblyName>
+    <AssemblyName>7Bpencil.ModularVests</AssemblyName>
     <AssemblyVersion>0.0.1</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <Version>$(AssemblyVersion)</Version>

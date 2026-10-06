@@ -5,8 +5,8 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>disable</Nullable>
-    <OutPath>$(SPTPath)\BepInEx\plugins\7Bpencil.ModularRigs</OutPath>
-    <StagePath>..\Stage\BepInEx\plugins\7Bpencil.ModularRigs</StagePath>
+    <OutPath>$(SPTPath)\BepInEx\plugins\7Bpencil.ModularVests</OutPath>
+    <StagePath>..\Stage\BepInEx\plugins\7Bpencil.ModularVests</StagePath>
     <AssemblySearchPaths>
       $(AssemblySearchPaths);
       $(SPTPath)\EscapeFromTarkov_Data\Managed;

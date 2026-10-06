@@ -14,7 +14,7 @@ using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Spt.Config;
 using SPTarkov.Server.Core.Models.Spt.Tables;
 
-namespace SevenBoldPencil.ModularRigs;
+namespace SevenBoldPencil.ModularVests;
 
 [Injectable(TypePriority = OnLoadOrder.Preload + 2)]
 public class Plugin(
