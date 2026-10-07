@@ -14,11 +14,6 @@ from bpy.props import StringProperty, IntProperty, FloatProperty, PointerPropert
 from bpy.types import Operator, Panel, PropertyGroup, UIList
 
 
-class MV_Settings(PropertyGroup):
-    vest: PointerProperty(type=bpy.types.Object)
-    armature: PointerProperty(type=bpy.types.Object)
-
-
 def find_armature(obj):
     if not obj or obj.type != 'MESH':
         return None
@@ -30,28 +25,39 @@ def find_armature(obj):
     return None
 
 
-class MV_SelectVest(Operator):
-    bl_idname = "mv.select_vest"
-    bl_label = "Select Vest"
+class MV_CreatePoint(Operator):
+    bl_idname = "mv.create_point"
+    bl_label = "Create Point"
 
     def execute(self, context):
-        vest_armature = find_armature(context.active_object)
-        if vest_armature:
-            settings = context.scene.mv_settings
-            settings.vest = context.active_object
-            settings.armature = vest_armature
-            print("found vest and armature")
-            print(settings.vest)
-            print(settings.armature)
-        else:
-            print("not found vest and armature")
+        active = context.active_object
+        if active is None:
+            print("MV_CreatePoint: no active object")
+            return {"CANCELLED"}
 
-        return {'FINISHED'}
+        armature = find_armature(active)
+        if armature is None:
+            print("MV_CreatePoint: no armature on active object")
+            return {"CANCELLED"}
+
+        center = sum((Vector(corner) for corner in active.bound_box), Vector()) / 8
+
+        bpy.ops.mesh.primitive_uv_sphere_add(
+            location=center,
+            radius=0.01,
+        )
+
+        point = context.object
+        point.parent = active
+        point.name = "7b_point"
+
+        print("MV_CreatePoint: created point")
+
+        return {"FINISHED"}
 
 
 CLASSES = (
-    MV_Settings,
-    MV_SelectVest,
+    MV_CreatePoint,
 )
 
 
@@ -59,13 +65,8 @@ def register():
     for cls in CLASSES:
         bpy.utils.register_class(cls)
 
-    bpy.types.Scene.mv_settings = PointerProperty(type=MV_Settings)
-
 
 def unregister():
-    if hasattr(bpy.types.Scene, "mv_settings"):
-        del bpy.types.Scene.mv_settings
-
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)
 
