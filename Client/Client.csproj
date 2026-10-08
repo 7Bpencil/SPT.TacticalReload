@@ -44,4 +44,16 @@
     <Reference Include="UnityEngine.VideoModule" />
   </ItemGroup>
 
+  <Target Name="CopyToSPT" AfterTargets="AfterBuild">
+    <Exec Command="mkdir &quot;$(OutPath)&quot;" ContinueOnError="true" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(OutPath)" />
+    <Exec Command="xcopy /hievry &quot;$(ProjectDir)data&quot; &quot;$(OutPath)/data&quot;" />
+  </Target>
+
+  <Target Name="CopyToStage" AfterTargets="AfterBuild" Condition="'$(Configuration)'=='Release'">
+    <Exec Command="mkdir &quot;$(StagePath)&quot;" ContinueOnError="true" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(StagePath)" />
+    <Exec Command="xcopy /hievry &quot;$(ProjectDir)data&quot; &quot;$(StagePath)/data&quot;" />
+  </Target>
+
 </Project>
