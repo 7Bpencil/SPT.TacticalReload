@@ -5,6 +5,9 @@
 // LICENSE file in the root directory of this source tree.
 //
 
+// TODO just make custom animation events
+// TODO patch first moment event fires
+
 using AnimationSystem;
 using AnimationEventSystem;
 using BepInEx;
@@ -52,12 +55,6 @@ using AnimationEvent = AnimationEventSystem.AnimationEvent;
 namespace SevenBoldPencil.ModularVests;
 
 [Serializable]
-public class AnimationBehavioursData
-{
-	public List<AnimationBehaviourData> AnimationBehaviours;
-}
-
-[Serializable]
 public class AnimationBehaviourData
 {
 	public string FullName;
@@ -66,23 +63,60 @@ public class AnimationBehaviourData
 	public List<AnimationEvent> AnimationEvents;
 }
 
+[Serializable]
+public class ReloadData
+{
+	public Transform Bone;
+	public Item Item;
+	public Transform ItemView;
+	public Transform NewMag;
+	public Transform OldBone;
+}
+
 [BepInPlugin("7Bpencil.ModularVests", "7Bpencil.ModularVests", "0.0.1")]
 public class Plugin : BaseUnityPlugin
 {
 	public static Plugin Instance;
 
+	public List<AnimationBehaviourData> CustomAnimationsData;
+	public Dictionary<int, AnimationBehaviourData> CustomAnimationsDataDict;
 	public Dictionary<int, Item> Items = new();
+	public Stack<ReloadData> Reloads = new();
 
     private void Awake()
 	{
 		Instance = this;
+
 		new Patch_ObjectsFactory_CreateItemAsync().Enable();
-		new Patch_PlayerBody_SlotView_CreateAndParent().Enable();
 		new Patch_AssetPoolObject_ReturnToPool().Enable();
 		new Patch_AssetPoolObject_OnDestroy().Enable();
-		new Patch_ObjectsFactory_CreateCleanLootPrefab().Enable();
-		new Patch_ObjectsFactory_CreateCleanLootPrefabAsync().Enable();
 
+		new Patch_WeaponPrefab_InitHotObjects().Enable();
+		new Patch_FirearmsAnimator_Reload().Enable();
+		new Patch_ReloadExternalMagOperation_OnMagPuttedToRig().Enable();
+		new Patch_ReloadExternalMagOperation_OnMagAppeared().Enable();
+		new Patch_ReloadExternalMagOperation_UseSecondMagForReload().Enable();
+		new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon().Enable();
+		new Patch_AnimationControllerEventsTable_FireUseSecondMagForReload().Enable();
+
+		new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start)).Enable();
+		new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)).Enable();
+		new PrintDebug<int>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)).Enable();
+		new PrintDebug<long>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)).Enable();
+		new PrintDebug<float>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
+		new PrintDebug<double>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)).Enable();
+
+        var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        var dataPath = Path.Combine(assemblyDir, "data", "animation-events-ak103.json");
+        if (SafeIO.ReadAllText(dataPath).Ok(out var json, out var e))
+        {
+            CustomAnimationsData = JsonConvert.DeserializeObject<List<AnimationBehaviourData>>(json);
+			CustomAnimationsDataDict = new();
+			foreach (var animData in CustomAnimationsData)
+			{
+				CustomAnimationsDataDict[animData.FullNameHash] = animData;
+			}
+        }
 	}
 
 	public void DumpAnimationData(WeaponPrefab weaponPrefab)
@@ -115,36 +149,93 @@ public class Plugin : BaseUnityPlugin
         SafeIO.WriteAllTextAsync(filePath, json);
 	}
 
+	public void DropMag(ReloadExternalMagOperation reload, float delay)
+	{
+		// StartCoroutine(DropMagCoroutine(reload, delay));
+	}
+
+	public IEnumerator DropMagCoroutine(ReloadExternalMagOperation reload, float delay)
+	{
+		yield return new WaitForSeconds(delay);
+		reload.Controller.IEventsConsumerOnMagHide();
+	}
+
+	   //  void Play(string stateName, int layer, float normalizedTime);
+
+    // void Play(int stateNameHash, int layer, float normalizedTime);
+
+	public void PlayWeaponAnimation(string stateName, string layerName)
+	{
+		if (!GetPlayerAndWeapon().Some(out var d))
+		{
+			return;
+		}
+
+		var (player, pwa, firearmController) = d;
+		var firearms = firearmController.Firearms;
+		var weaponPrefab = firearms.WeaponPrefab;
+		if (weaponPrefab.FirearmsAnimator.Animator is UnityAnimatorWrapper animator)
+		{
+			var layerIndex = animator.GetLayerIndex(layerName);
+			animator.Play(stateName, layerIndex, 0);
+		}
+
+		// RELOAD PROGRESSIVE | Hands
+	}
+
+	public void PlayReload()
+	{
+		if (!GetPlayerAndWeapon().Some(out var d))
+		{
+			Logger.LogWarning($"Nope");
+			return;
+		}
+
+		var (player, pwa, firearmController) = d;
+		var firearms = firearmController.Firearms;
+		var weaponPrefab = firearms.WeaponPrefab;
+		// weaponPrefab.FirearmsAnimator.Reload(0, 0, false);
+
+		// weaponPrefab.FirearmsAnimator.Animator.SetTrigger(TRIGGER_LOOK);
+		// AnimationControllerParametersTable.TriggerLook(base.Animator);
+
+		Logger.LogWarning($"Reload");
+	}
+
+	public Option<(Player, ProceduralWeaponAnimation, FirearmController)> GetPlayerAndWeapon()
+	{
+        if (!Singleton<GameWorld>.Instantiated)
+        {
+            return default;
+        }
+
+        var player = Singleton<GameWorld>.Instance.MainPlayer;
+		if (!player)
+		{
+            return default;
+		}
+		if (!player.IsYourPlayer)
+		{
+            return default;
+		}
+
+		var pwa = player.ProceduralWeaponAnimation;
+		var _pwa = new ProceduralWeaponAnimation_Proxy(pwa);
+		var firearmController = _pwa._firearmController;
+		if (!firearmController)
+		{
+            return default;
+		}
+
+		return new((player, pwa, firearmController));
+	}
+
     public void OnCreatedItemGameObject(Item item, GameObject itemGameObject)
 	{
 		var instanceID = itemGameObject.GetInstanceID();
 		Items.Add(instanceID, item);
 	}
 
-    public void OnEquippedInSlot(PlayerBody playerBody, GameObject gameObject)
-	{
-		var instanceID = gameObject.GetInstanceID();
-		if (!Items.TryGetValue(instanceID, out var item))
-		{
-			return;
-		}
-
-		// TODO rewrite!
-
-		foreach (var dressItem in gameObject.GetComponentsInChildren<DressItem>())
-		{
-			// skip root dress, it is already init
-			if (dressItem.gameObject != gameObject)
-			{
-				dressItem.EnableLoot(false);
-				foreach (var dress in dressItem.DressPrefab.GetComponentsInChildren<Dress>(includeInactive: true))
-				{
-					dress.Init(playerBody);
-					dress.Skin(playerBody.PlayerBones.RootJoint, playerBody._meshTransform);
-				}
-			}
-		}
-	}
 
     public void OnItemDestroyed(AssetPoolObject assetPoolObject)
 	{
@@ -155,17 +246,6 @@ public class Plugin : BaseUnityPlugin
 		}
 	}
 
-	public void EnableLoot(GameObject gameObject)
-	{
-		foreach (var dressItem in gameObject.GetComponentsInChildren<DressItem>())
-		{
-			// skip root dress, it is already init
-			if (dressItem.gameObject != gameObject)
-			{
-				dressItem.EnableLoot(true);
-			}
-		}
-	}
 }
 
 public class Patch_ObjectsFactory_CreateItemAsync : ModulePatch
@@ -192,20 +272,6 @@ public class Patch_ObjectsFactory_CreateItemAsync : ModulePatch
 		Plugin.Instance.OnCreatedItemGameObject(item, itemGameObject);
 		return itemGameObject;
     }
-}
-
-public class Patch_PlayerBody_SlotView_CreateAndParent : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(PlayerBody.SlotView), nameof(PlayerBody.SlotView.CreateAndParent));
-    }
-
-    [PatchPostfix]
-    public static void Postfix(PlayerBody playerBody, GameObject model)
-	{
-		Plugin.Instance.OnEquippedInSlot(playerBody, model);
-	}
 }
 
 public class Patch_AssetPoolObject_ReturnToPool : ModulePatch
@@ -236,47 +302,243 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
 	}
 }
 
-public class Patch_ObjectsFactory_CreateCleanLootPrefab : ModulePatch
+public struct ProceduralWeaponAnimation_Proxy(ProceduralWeaponAnimation instance)
+{
+    private readonly ProceduralWeaponAnimation __instance = instance;
+
+    private static TypedFieldInfo<ProceduralWeaponAnimation, FirearmController> __firearmController = new("_firearmController");
+
+    public FirearmController _firearmController { get { return __firearmController.Get(__instance); } set { __firearmController.Set(__instance, value); } }
+}
+
+
+
+public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 {
     protected override MethodBase GetTargetMethod()
     {
-		Type[] parameters = [typeof(Item), typeof(ECameraType), typeof(IPlayer)];
-        return AccessTools.Method(typeof(ObjectsFactory), nameof(ObjectsFactory.CreateCleanLootPrefab));
+        return AccessTools.Method(typeof(WeaponPrefab), nameof(WeaponPrefab.InitHotObjects));
     }
 
     [PatchPostfix]
-    public static void Postfix(GameObject __result, Item item)
+    public static void Postfix(WeaponPrefab __instance, Weapon ____weaponData)
 	{
-		// TODO we should tighten filter, but whats the right approach?
-		if (item is CompoundItem)
+		// old but reliable way of tracking weapon spawn
+		if (____weaponData == null)
 		{
-			Plugin.Instance.EnableLoot(__result);
+			return;
+		}
+		foreach (var ieventBehaviour in __instance.AnimationEventsEmitter._animationEventsStateBehaviours)
+		{
+			if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
+			{
+				continue;
+			}
+			if (!Plugin.Instance.CustomAnimationsDataDict.TryGetValue(eventBehaviour.FullNameHash, out var customData))
+			{
+				continue;
+			}
+			eventBehaviour.EventsData._stateHashToEventsCollection[eventBehaviour.EventsListId]._animationEvents = customData.AnimationEvents;
 		}
 	}
 }
 
-public class Patch_ObjectsFactory_CreateCleanLootPrefabAsync : ModulePatch
+public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
 {
     protected override MethodBase GetTargetMethod()
     {
-		Type[] parameters = [typeof(Item), typeof(IPlayer)];
-        return AccessTools.Method(typeof(ObjectsFactory), nameof(ObjectsFactory.CreateCleanLootPrefabAsync));
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared));
     }
 
     [PatchPostfix]
-    public static void Postfix(ref Task<GameObject> __result, Item item)
+    public static void Postfix(ReloadExternalMagOperation __instance)
 	{
-		// TODO we should tighten filter, but whats the right approach?
-		if (item is CompoundItem)
+		var slot = __instance.ReloadExternalMagResult.MagazineSlot;
+		var viewSlot =  __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
+		var item = viewSlot.ItemView;
+		var oldBone = viewSlot.Bone;
+		var newBone = oldBone.parent.Find("mod_magazine_new"); // TODO cache
+		item.SetParent(newBone, false);
+
+		var reload = Plugin.Instance.Reloads.Peek();
+		reload.NewMag = item;
+		reload.OldBone = oldBone;
+	}
+}
+
+public class Patch_AnimationControllerEventsTable_FireUseSecondMagForReload : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(AnimationControllerEventsTable), nameof(AnimationControllerEventsTable.FireUseSecondMagForReload));
+    }
+
+    [PatchPostfix]
+    public static void Postfix()
+	{
+		Logger.LogWarning($"Patch_AnimationControllerEventsTable_FireUseSecondMagForReload");
+	}
+}
+
+public class Patch_ReloadExternalMagOperation_UseSecondMagForReload : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload));
+    }
+
+    [PatchPrefix]
+    public static bool Prefix(ReloadExternalMagOperation __instance)
+	{
+		var reload = Plugin.Instance.Reloads.Peek();
+		AssetPoolObject.ReturnToPool(reload.ItemView.gameObject);
+		return false;
+	}
+}
+
+public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon));
+    }
+
+    [PatchPostfix]
+    public static void Postfix(ReloadExternalMagOperation __instance)
+	{
+		var reload = Plugin.Instance.Reloads.Peek();
+		reload.NewMag.SetParent(reload.OldBone);
+	}
+}
+
+public class Patch_ReloadExternalMagOperation_OnMagPuttedToRig : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig));
+    }
+
+    [PatchPrefix]
+    public static bool Prefix(ReloadExternalMagOperation __instance)
+	{
+		if (!__instance._magPuttedToRig)
 		{
-			__result = WrapTask(__result, item);
+			__instance._magPuttedToRig = true;
+
+			var slot = __instance.ReloadExternalMagResult.MagazineSlot;
+			var slotView = __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
+
+			Logger.LogWarning("Keep mag");
+			Plugin.Instance.Reloads.Push(new()
+			{
+				Bone = slotView.Bone,
+				Item = slotView.Item,
+				ItemView = slotView.ItemView,
+			});
+
+			// TODO at clean up we will need to copy paste most of the code from RemoveMod
+
+			// if (__instance.ReloadExternalMagResult.RemoveOldMagResult != null)
+			// {
+			// 	Item item = ReloadExternalMagResult.RemoveOldMagResult.Item;
+			// 	DropMod(item, EWeaponModType.mod_magazine);
+			// }
+			// Firearms.RemoveMod(ReloadExternalMagResult.MagazineSlot);
 		}
+		return false;
+	}
+}
+
+public class Patch_FirearmsAnimator_Reload : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+		Type[] parameters = [typeof(int), typeof(int), typeof(bool)];
+        return AccessTools.Method(typeof(FirearmsAnimator), nameof(FirearmsAnimator.Reload), parameters);
+    }
+
+    [PatchPrefix]
+    public static bool Prefix(FirearmsAnimator __instance, int currentMagType, int nextMagType, bool isFast)
+	{
+		if (isFast)
+		{
+			return true;
+		}
+
+		__instance.SetMagTypeCurrent(currentMagType);
+		__instance.SetMagTypeNew(nextMagType);
+
+		if (__instance.Animator is UnityAnimatorWrapper animator)
+		{
+			var layerIndex = animator.GetLayerIndex("Hands"); // TODO cache
+			animator.Play("RELOAD PROGRESSIVE", layerIndex, 0);
+		}
+
+		return false;
+	}
+}
+
+// event names
+// 1551431816 MagShow -> OnMagAppeared
+// 798565163  MagHide -> OnMagPuttedToRig
+// 1258896930 MagIn   -> OnMagInsertedToWeapon
+// 1947938901 MagOut  -> OnMagPulledOutFromWeapon
+// PutMagToRig -> Unused
+// 443236115 ReplaceSecondMag -> Unused
+// 67499002  UseSecondMagForReload -> UseSecondMagForReload/SwitchToReloadWithNewMag
+
+// original:
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon -> MagOut
+// [Warning:ModulePatch] OnMagPuttedToRig -> MagHide
+// [Warning:ModulePatch] OnMagAppeared -> MagShow
+// [Warning:ModulePatch] OnMagInsertedToWeapon -> MagIn
+// [Warning:ModulePatch] Start
+
+// new
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon
+// [Warning:ModulePatch] OnMagPuttedToRig
+// [Warning:ModulePatch] OnMagAppeared
+// [Warning:ModulePatch] UseSecondMagForReload
+// [Warning:ModulePatch] Start
+
+// hit
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagAppeared
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon
+// [Warning:ModulePatch] OnMagInsertedToWeapon
+// [Warning:ModulePatch] Start
+
+// admin
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagAppeared
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon
+// [Warning:ModulePatch] OnMagInsertedToWeapon
+// [Warning:ModulePatch] OnMagPuttedToRig
+// [Warning:ModulePatch] Start
+
+// T is a dummy class, to keep all classes separate,
+// otherwise they will share method name
+public class PrintDebug<T> : ModulePatch
+{
+	private readonly Type Type;
+	private static string MethodName;
+
+	public PrintDebug(Type type, string methodName)
+	{
+		Type = type;
+		MethodName = methodName;
 	}
 
-    private static async Task<GameObject> WrapTask(Task<GameObject> task, Item item)
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(Type, MethodName);
+    }
+
+    [PatchPrefix]
+    public static void Prefix()
 	{
-        var itemGameObject = await task;
-		Plugin.Instance.EnableLoot(itemGameObject);
-		return itemGameObject;
+		Logger.LogWarning(MethodName);
 	}
 }
