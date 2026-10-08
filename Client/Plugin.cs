@@ -5,6 +5,8 @@
 // LICENSE file in the root directory of this source tree.
 //
 
+using AnimationSystem;
+using AnimationEventSystem;
 using BepInEx;
 using BepInEx.Configuration;
 using Comfort.Common;
@@ -33,6 +35,7 @@ using SPT.Reflection.Patching;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,8 +46,25 @@ using JsonType;
 using GPUInstancer;
 using Koenigz.PerfectCulling.EFT;
 using FirearmController = EFT.Player.FirearmController;
+using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMagOperation;
+using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
 namespace SevenBoldPencil.ModularVests;
+
+[Serializable]
+public class AnimationBehavioursData
+{
+	public List<AnimationBehaviourData> AnimationBehaviours;
+}
+
+[Serializable]
+public class AnimationBehaviourData
+{
+	public string FullName;
+	public int FullNameHash;
+	public int EventsListId;
+	public List<AnimationEvent> AnimationEvents;
+}
 
 [BepInPlugin("7Bpencil.ModularVests", "7Bpencil.ModularVests", "0.0.1")]
 public class Plugin : BaseUnityPlugin
@@ -62,6 +82,37 @@ public class Plugin : BaseUnityPlugin
 		new Patch_AssetPoolObject_OnDestroy().Enable();
 		new Patch_ObjectsFactory_CreateCleanLootPrefab().Enable();
 		new Patch_ObjectsFactory_CreateCleanLootPrefabAsync().Enable();
+
+	}
+
+	public void DumpAnimationData(WeaponPrefab weaponPrefab)
+	{
+		var result = new List<AnimationBehaviourData>();
+		foreach (var ieventBehaviour in weaponPrefab.AnimationEventsEmitter._animationEventsStateBehaviours)
+		{
+			if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
+			{
+				continue;
+			}
+
+			var resultAnimationEvents = new List<AnimationEvent>();
+			foreach (var animationEvent in eventBehaviour.AnimationEvents)
+			{
+				resultAnimationEvents.Add((AnimationEvent)animationEvent.Clone());
+			}
+
+			result.Add(new()
+			{
+				FullName = eventBehaviour.FullName,
+				FullNameHash = eventBehaviour.FullNameHash,
+				EventsListId = eventBehaviour.EventsListId,
+				AnimationEvents = resultAnimationEvents,
+			});
+		}
+
+        var json = JsonConvert.SerializeObject(result, Formatting.Indented);
+        var filePath = "animation-events.json";
+        SafeIO.WriteAllTextAsync(filePath, json);
 	}
 
     public void OnCreatedItemGameObject(Item item, GameObject itemGameObject)

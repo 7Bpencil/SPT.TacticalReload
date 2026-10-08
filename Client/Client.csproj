@@ -19,6 +19,7 @@
     <Reference Include="0Harmony" />
     <Reference Include="spt-common" />
     <Reference Include="spt-reflection" />
+    <Reference Include="AnimationSystem.Types" />
     <Reference Include="Assembly-CSharp" />
     <Reference Include="BepInEx" />
     <Reference Include="Comfort" />
@@ -28,6 +29,7 @@
     <Reference Include="Sirenix.Serialization" />
     <Reference Include="Unity.TextMeshPro" />
     <Reference Include="UnityEngine" />
+    <Reference Include="UnityEngine.AnimationModule" />
     <Reference Include="UnityEngine.AudioModule" />
     <Reference Include="UnityEngine.AssetBundleModule" />
     <Reference Include="UnityEngine.CoreModule" />
