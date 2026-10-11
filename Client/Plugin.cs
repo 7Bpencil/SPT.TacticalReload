@@ -117,9 +117,8 @@ public class Plugin : BaseUnityPlugin
 {
 	public static Plugin Instance;
 
-	public List<AnimationBehaviourData> CustomAnimationsData;
-	public Dictionary<int, AnimationBehaviourData> CustomAnimationsDataDict;
-	public Dictionary<FirearmsAnimator, ReloadData> Reloads = new();
+	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> CustomAnimationsData;
+	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
 
     private void Awake()
 	{
@@ -143,16 +142,48 @@ public class Plugin : BaseUnityPlugin
 		new PrintDebug<ulong>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
 
         var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        var dataPath = Path.Combine(assemblyDir, "data", "animation-events-ak103.json");
-        if (SafeIO.ReadAllText(dataPath).Ok(out var json, out var e))
+		CustomAnimationsData = LoadCustomAnimationsData(assemblyDir);
+		Reloads = new();
+	}
+
+	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> LoadCustomAnimationsData(string assemblyDir)
+	{
+        var configPath = Path.Combine(assemblyDir, "data", "config.jsonc");
+        if (!SafeIO.ReadAllText(configPath).Ok(out var configJson, out var _))
         {
-            CustomAnimationsData = JsonConvert.DeserializeObject<List<AnimationBehaviourData>>(json);
-			CustomAnimationsDataDict = new();
-			foreach (var animData in CustomAnimationsData)
+			return [];
+		}
+
+		var animationEventsPath = Path.Combine(assemblyDir, "data", "animation-events");
+		var animationEventPaths = SafeIO.GetFiles(animationEventsPath, "*.jsonc", SearchOption.AllDirectories);
+		var resultEvents = new Dictionary<string, Dictionary<int, AnimationBehaviourData>>(animationEventPaths.Length);
+		foreach (var animationEventPath in animationEventPaths)
+		{
+			if (SafeIO.ReadAllText(animationEventPath).Ok(out var animationEventJson, out var _))
 			{
-				CustomAnimationsDataDict[animData.FullNameHash] = animData;
+				var animationEventData = JsonConvert.DeserializeObject<List<AnimationBehaviourData>>(animationEventJson);
+				var animationEventDataDict = new Dictionary<int, AnimationBehaviourData>(animationEventData.Count);
+				foreach (var data in animationEventData)
+				{
+					animationEventDataDict[data.FullNameHash] = data;
+				}
+
+				var filename = Path.GetFileNameWithoutExtension(animationEventPath);
+				resultEvents.Add(filename, animationEventDataDict);
 			}
-        }
+		}
+
+		var config = JsonConvert.DeserializeObject<Dictionary<string, string>>(configJson);
+		var result = new Dictionary<string, Dictionary<int, AnimationBehaviourData>>(config.Count);
+		foreach (var (template, animationName) in config)
+		{
+			if (resultEvents.TryGetValue(animationName, out var animations))
+			{
+				result.Add(template, animations);
+			}
+		}
+
+		return result;
 	}
 
 	public void DumpAnimationData(WeaponPrefab weaponPrefab)
@@ -214,6 +245,10 @@ public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 		{
 			return;
 		}
+		if (!Plugin.Instance.CustomAnimationsData.TryGetValue(____weaponData.StringTemplateId, out var customAnimationsData))
+		{
+			return;
+		}
 		// replace tactical animations events data with ones designed to work with our system
 		foreach (var ieventBehaviour in __instance.AnimationEventsEmitter._animationEventsStateBehaviours)
 		{
@@ -221,7 +256,7 @@ public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 			{
 				continue;
 			}
-			if (!Plugin.Instance.CustomAnimationsDataDict.TryGetValue(eventBehaviour.FullNameHash, out var customData))
+			if (!customAnimationsData.TryGetValue(eventBehaviour.FullNameHash, out var customData))
 			{
 				continue;
 			}
@@ -261,6 +296,11 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
     public static void Prefix(ReloadExternalMagOperation __instance)
 	{
 		// TODO here we decide if reload is tactical
+
+		if (!Plugin.Instance.CustomAnimationsData.ContainsKey(__instance.Weapon.StringTemplateId))
+		{
+			return;
+		}
 
 		Plugin.Instance.Reloads.Add(__instance.FirearmsAnimator, new()
 		{
