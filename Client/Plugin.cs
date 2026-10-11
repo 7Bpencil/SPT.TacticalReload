@@ -52,7 +52,7 @@ using FirearmController = EFT.Player.FirearmController;
 using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMagOperation;
 using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
-namespace SevenBoldPencil.ModularVests;
+namespace SevenBoldPencil.TacticalReload;
 
 [Serializable]
 public class AnimationBehaviourData
@@ -73,7 +73,7 @@ public class ReloadData
 	public Transform OldBone;
 }
 
-[BepInPlugin("7Bpencil.ModularVests", "7Bpencil.ModularVests", "0.0.1")]
+[BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
 public class Plugin : BaseUnityPlugin
 {
 	public static Plugin Instance;
