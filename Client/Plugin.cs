@@ -6,7 +6,6 @@
 //
 
 // TODO just make custom animation events
-// TODO patch first moment event fires
 
 using AnimationSystem;
 using AnimationEventSystem;
@@ -50,9 +49,50 @@ using GPUInstancer;
 using Koenigz.PerfectCulling.EFT;
 using FirearmController = EFT.Player.FirearmController;
 using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMagOperation;
+using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagResult;
 using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
 namespace SevenBoldPencil.TacticalReload;
+
+// event names
+// 1551431816 MagShow -> OnMagAppeared
+// 798565163  MagHide -> OnMagPuttedToRig
+// 1258896930 MagIn   -> OnMagInsertedToWeapon
+// 1947938901 MagOut  -> OnMagPulledOutFromWeapon
+// PutMagToRig -> Unused
+// 443236115 ReplaceSecondMag -> Unused
+// 67499002  UseSecondMagForReload -> UseSecondMagForReload/SwitchToReloadWithNewMag
+
+// original:
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon -> MagOut
+// [Warning:ModulePatch] OnMagPuttedToRig -> MagHide
+// [Warning:ModulePatch] OnMagAppeared -> MagShow
+// [Warning:ModulePatch] OnMagInsertedToWeapon -> MagIn
+// [Warning:ModulePatch] Start
+
+// new
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon
+// [Warning:ModulePatch] OnMagPuttedToRig
+// [Warning:ModulePatch] OnMagAppeared
+// [Warning:ModulePatch] UseSecondMagForReload
+// [Warning:ModulePatch] Start
+
+// hit
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagAppeared
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon
+// [Warning:ModulePatch] OnMagInsertedToWeapon
+// [Warning:ModulePatch] Start
+
+// admin
+// [Warning:ModulePatch] Start
+// [Warning:ModulePatch] OnMagAppeared
+// [Warning:ModulePatch] OnMagPulledOutFromWeapon
+// [Warning:ModulePatch] OnMagInsertedToWeapon
+// [Warning:ModulePatch] OnMagPuttedToRig
+// [Warning:ModulePatch] Start
 
 [Serializable]
 public class AnimationBehaviourData
@@ -63,13 +103,12 @@ public class AnimationBehaviourData
 	public List<AnimationEvent> AnimationEvents;
 }
 
-[Serializable]
 public class ReloadData
 {
-	public Transform Bone;
-	public Item Item;
-	public Transform ItemView;
-	public Transform NewMag;
+	public ReloadExternalMagOperation Operation;
+	public Item OldMagItem;
+	public Transform OldMagView;
+	public Transform NewMagView;
 	public Transform OldBone;
 }
 
@@ -80,26 +119,28 @@ public class Plugin : BaseUnityPlugin
 
 	public List<AnimationBehaviourData> CustomAnimationsData;
 	public Dictionary<int, AnimationBehaviourData> CustomAnimationsDataDict;
-	public Dictionary<int, Item> Items = new();
-	public Stack<ReloadData> Reloads = new();
+	public Dictionary<FirearmsAnimator, ReloadData> Reloads = new();
 
     private void Awake()
 	{
 		Instance = this;
 
 		new Patch_WeaponPrefab_InitHotObjects().Enable();
+		new Patch_ReloadExternalMagOperation_Reset().Enable();
+		new Patch_ReloadExternalMagOperation_Start().Enable();
 		new Patch_FirearmsAnimator_Reload().Enable();
 		new Patch_ReloadExternalMagOperation_OnMagPuttedToRig().Enable();
 		new Patch_ReloadExternalMagOperation_OnMagAppeared().Enable();
 		new Patch_ReloadExternalMagOperation_UseSecondMagForReload().Enable();
 		new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon().Enable();
 
-		new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start)).Enable();
-		new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)).Enable();
+		new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)).Enable();
+		new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]).Enable();
+		new PrintDebug<ushort>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)).Enable();
 		new PrintDebug<int>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)).Enable();
-		new PrintDebug<long>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)).Enable();
-		new PrintDebug<float>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
-		new PrintDebug<double>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)).Enable();
+		new PrintDebug<uint>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)).Enable();
+		new PrintDebug<long>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)).Enable();
+		new PrintDebug<ulong>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
 
         var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         var dataPath = Path.Combine(assemblyDir, "data", "animation-events-ak103.json");
@@ -143,6 +184,14 @@ public class Plugin : BaseUnityPlugin
         var filePath = "animation-events.json";
         SafeIO.WriteAllTextAsync(filePath, json);
 	}
+
+	public void AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
+	{
+		if (a != b)
+		{
+			Logger.LogError($"Reload operations not equal!");
+		}
+	}
 }
 
 public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
@@ -160,10 +209,12 @@ public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 		{
 			return;
 		}
+		// AnimationEventsEmitter is null on item preview screen
 		if (__instance.AnimationEventsEmitter == null)
 		{
 			return;
 		}
+		// replace tactical animations events data with ones designed to work with our system
 		foreach (var ieventBehaviour in __instance.AnimationEventsEmitter._animationEventsStateBehaviours)
 		{
 			if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
@@ -179,57 +230,73 @@ public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 	}
 }
 
-public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
+public class Patch_ReloadExternalMagOperation_Reset : ModulePatch
 {
     protected override MethodBase GetTargetMethod()
     {
-        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared));
-    }
-
-    [PatchPostfix]
-    public static void Postfix(ReloadExternalMagOperation __instance)
-	{
-		var slot = __instance.ReloadExternalMagResult.MagazineSlot;
-		var viewSlot =  __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
-		var item = viewSlot.ItemView;
-		var oldBone = viewSlot.Bone;
-		var newBone = oldBone.parent.Find("mod_magazine_new"); // TODO cache
-		item.SetParent(newBone, false);
-
-		var reload = Plugin.Instance.Reloads.Peek();
-		reload.NewMag = item;
-		reload.OldBone = oldBone;
-	}
-}
-
-public class Patch_ReloadExternalMagOperation_UseSecondMagForReload : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload));
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset));
     }
 
     [PatchPrefix]
-    public static bool Prefix(ReloadExternalMagOperation __instance)
+    public static void Prefix(ReloadExternalMagOperation __instance)
 	{
-		var reload = Plugin.Instance.Reloads.Peek();
-		AssetPoolObject.ReturnToPool(reload.ItemView.gameObject);
-		return false;
+		// Operations get reused when possible, so we should clean old data too
+
+		if (Plugin.Instance.Reloads.Remove(__instance.FirearmsAnimator, out var reload))
+		{
+			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+			// TODO any extra cleanup?
+		}
 	}
 }
 
-public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatch
+public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 {
     protected override MethodBase GetTargetMethod()
     {
-        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon));
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]);
     }
 
-    [PatchPostfix]
-    public static void Postfix(ReloadExternalMagOperation __instance)
+    [PatchPrefix]
+    public static void Prefix(ReloadExternalMagOperation __instance)
 	{
-		var reload = Plugin.Instance.Reloads.Peek();
-		reload.NewMag.SetParent(reload.OldBone);
+		// TODO here we decide if reload is tactical
+
+		Plugin.Instance.Reloads.Add(__instance.FirearmsAnimator, new()
+		{
+			Operation = __instance,
+		});
+	}
+}
+
+public class Patch_FirearmsAnimator_Reload : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(FirearmsAnimator), nameof(FirearmsAnimator.Reload), [typeof(int), typeof(int), typeof(bool)]);
+    }
+
+    [PatchPrefix]
+    public static bool Prefix(FirearmsAnimator __instance, int currentMagType, int nextMagType, bool isFast)
+	{
+		// FirearmsAnimator.Reload is called right inside ReloadExternalMagOperation.Start, so I am pretty sure
+		// that we are still in the same Operation that wanted tactical reload, and using FirearmsAnimator as a key is fine
+
+		if (Plugin.Instance.Reloads.TryGetValue(__instance, out var reload))
+		{
+			__instance.SetMagTypeCurrent(currentMagType);
+			__instance.SetMagTypeNew(nextMagType);
+
+			if (__instance.Animator is UnityAnimatorWrapper animator)
+			{
+				var layerIndex = animator.GetLayerIndex("Hands"); // TODO cache
+				animator.Play("RELOAD PROGRESSIVE", layerIndex, 0);
+			}
+
+			return false;
+		}
+
+		return true;
 	}
 }
 
@@ -243,119 +310,138 @@ public class Patch_ReloadExternalMagOperation_OnMagPuttedToRig : ModulePatch
     [PatchPrefix]
     public static bool Prefix(ReloadExternalMagOperation __instance)
 	{
-		if (!__instance._magPuttedToRig)
+		// In "normal" reload animations character first pulls old mag out,
+		// its item gets removed from slot and item view is destroyed, then
+		// new mag is spawned, item gets inserted into slot and animation of putting it in is played.
+		// This means player never sees two mags at the same time.
+		// To not break anything I keep order of events the same, but do not dispawn old mag object
+		// until UseSecondMagForReload event
+
+		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
-			__instance._magPuttedToRig = true;
+			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 
-			var slot = __instance.ReloadExternalMagResult.MagazineSlot;
-			var slotView = __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
-
-			Logger.LogWarning("Keep mag");
-			Plugin.Instance.Reloads.Push(new()
+			if (!__instance._magPuttedToRig)
 			{
-				Bone = slotView.Bone,
-				Item = slotView.Item,
-				ItemView = slotView.ItemView,
-			});
+				__instance._magPuttedToRig = true;
 
-			// TODO at clean up we will need to copy paste most of the code from RemoveMod
+				var slot = __instance.ReloadExternalMagResult.MagazineSlot;
+				var slotView = __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
 
-			// if (__instance.ReloadExternalMagResult.RemoveOldMagResult != null)
-			// {
-			// 	Item item = ReloadExternalMagResult.RemoveOldMagResult.Item;
-			// 	DropMod(item, EWeaponModType.mod_magazine);
-			// }
-			// Firearms.RemoveMod(ReloadExternalMagResult.MagazineSlot);
+				reload.OldMagItem = slotView.Item;
+				reload.OldMagView = slotView.ItemView;
+
+				// TODO at clean up we will need to copy paste most of the code from RemoveMod
+
+				// if (__instance.ReloadExternalMagResult.RemoveOldMagResult != null)
+				// {
+				// 	Item item = ReloadExternalMagResult.RemoveOldMagResult.Item;
+				// 	DropMod(item, EWeaponModType.mod_magazine);
+				// }
+				// Firearms.RemoveMod(ReloadExternalMagResult.MagazineSlot);
+			}
+			return false;
 		}
-		return false;
+		return true;
 	}
 }
 
-public class Patch_FirearmsAnimator_Reload : ModulePatch
+public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
 {
     protected override MethodBase GetTargetMethod()
     {
-		Type[] parameters = [typeof(int), typeof(int), typeof(bool)];
-        return AccessTools.Method(typeof(FirearmsAnimator), nameof(FirearmsAnimator.Reload), parameters);
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared));
     }
 
-    [PatchPrefix]
-    public static bool Prefix(FirearmsAnimator __instance, int currentMagType, int nextMagType, bool isFast)
+    [PatchPostfix]
+    public static void Postfix(ReloadExternalMagOperation __instance)
 	{
-		if (isFast)
+		// This event is fired when new mag first appears on the screen, usually its almost at the
+		// start of the animation
+
+		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
-			return true;
+			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+
+			var slot = __instance.ReloadExternalMagResult.MagazineSlot;
+			var viewSlot =  __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
+			var newMagView = viewSlot.ItemView;
+			var oldBone = viewSlot.Bone;
+			var newBone = oldBone.parent.Find("mod_magazine_new"); // TODO cache
+			newMagView.SetParent(newBone, false);
+
+			reload.NewMagView = newMagView;
+			reload.OldBone = oldBone;
 		}
-
-		__instance.SetMagTypeCurrent(currentMagType);
-		__instance.SetMagTypeNew(nextMagType);
-
-		if (__instance.Animator is UnityAnimatorWrapper animator)
-		{
-			var layerIndex = animator.GetLayerIndex("Hands"); // TODO cache
-			animator.Play("RELOAD PROGRESSIVE", layerIndex, 0);
-		}
-
-		return false;
 	}
 }
 
-// event names
-// 1551431816 MagShow -> OnMagAppeared
-// 798565163  MagHide -> OnMagPuttedToRig
-// 1258896930 MagIn   -> OnMagInsertedToWeapon
-// 1947938901 MagOut  -> OnMagPulledOutFromWeapon
-// PutMagToRig -> Unused
-// 443236115 ReplaceSecondMag -> Unused
-// 67499002  UseSecondMagForReload -> UseSecondMagForReload/SwitchToReloadWithNewMag
+public class Patch_ReloadExternalMagOperation_UseSecondMagForReload : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload));
+    }
 
-// original:
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon -> MagOut
-// [Warning:ModulePatch] OnMagPuttedToRig -> MagHide
-// [Warning:ModulePatch] OnMagAppeared -> MagShow
-// [Warning:ModulePatch] OnMagInsertedToWeapon -> MagIn
-// [Warning:ModulePatch] Start
+    [PatchPrefix]
+    public static bool Prefix(ReloadExternalMagOperation __instance)
+	{
+		// I time this event when old mag is offscreen and can be despawned without player noticing
+		// (or replaced with loot version in fast reload animation)
 
-// new
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon
-// [Warning:ModulePatch] OnMagPuttedToRig
-// [Warning:ModulePatch] OnMagAppeared
-// [Warning:ModulePatch] UseSecondMagForReload
-// [Warning:ModulePatch] Start
+		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		{
+			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+			AssetPoolObject.ReturnToPool(reload.OldMagView.gameObject);
+			reload.OldMagView = null;
+			// TODO spawn dropped mag?
 
-// hit
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagAppeared
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon
-// [Warning:ModulePatch] OnMagInsertedToWeapon
-// [Warning:ModulePatch] Start
+			return false;
+		}
+		return true;
+	}
+}
 
-// admin
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagAppeared
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon
-// [Warning:ModulePatch] OnMagInsertedToWeapon
-// [Warning:ModulePatch] OnMagPuttedToRig
-// [Warning:ModulePatch] Start
+public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon));
+    }
+
+    [PatchPostfix]
+    public static void Postfix(ReloadExternalMagOperation __instance)
+	{
+		// I time this event when magazine_new bone is exactly in the same position/rotation
+		// as ordinary magazine bone, this way snapping magazine object back to the bone game expects
+		// wont produce any weird teleporting mags.
+
+		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		{
+			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+			reload.NewMagView.SetParent(reload.OldBone);
+		}
+	}
+}
 
 // T is a dummy class, to keep all classes separate,
-// otherwise they will share method name
+// otherwise they will share method name (because its static)
 public class PrintDebug<T> : ModulePatch
 {
 	private readonly Type Type;
+	private readonly Type[] Parameters;
 	private static string MethodName;
 
-	public PrintDebug(Type type, string methodName)
+	public PrintDebug(Type type, string methodName, Type[] parameters = null)
 	{
 		Type = type;
+		Parameters = parameters;
 		MethodName = methodName;
 	}
 
     protected override MethodBase GetTargetMethod()
     {
-        return AccessTools.Method(Type, MethodName);
+        return AccessTools.Method(Type, MethodName, Parameters);
     }
 
     [PatchPrefix]
