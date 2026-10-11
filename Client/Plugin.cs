@@ -87,17 +87,12 @@ public class Plugin : BaseUnityPlugin
 	{
 		Instance = this;
 
-		new Patch_ObjectsFactory_CreateItemAsync().Enable();
-		new Patch_AssetPoolObject_ReturnToPool().Enable();
-		new Patch_AssetPoolObject_OnDestroy().Enable();
-
 		new Patch_WeaponPrefab_InitHotObjects().Enable();
 		new Patch_FirearmsAnimator_Reload().Enable();
 		new Patch_ReloadExternalMagOperation_OnMagPuttedToRig().Enable();
 		new Patch_ReloadExternalMagOperation_OnMagAppeared().Enable();
 		new Patch_ReloadExternalMagOperation_UseSecondMagForReload().Enable();
 		new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon().Enable();
-		new Patch_AnimationControllerEventsTable_FireUseSecondMagForReload().Enable();
 
 		new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start)).Enable();
 		new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)).Enable();
@@ -148,170 +143,7 @@ public class Plugin : BaseUnityPlugin
         var filePath = "animation-events.json";
         SafeIO.WriteAllTextAsync(filePath, json);
 	}
-
-	public void DropMag(ReloadExternalMagOperation reload, float delay)
-	{
-		// StartCoroutine(DropMagCoroutine(reload, delay));
-	}
-
-	public IEnumerator DropMagCoroutine(ReloadExternalMagOperation reload, float delay)
-	{
-		yield return new WaitForSeconds(delay);
-		reload.Controller.IEventsConsumerOnMagHide();
-	}
-
-	   //  void Play(string stateName, int layer, float normalizedTime);
-
-    // void Play(int stateNameHash, int layer, float normalizedTime);
-
-	public void PlayWeaponAnimation(string stateName, string layerName)
-	{
-		if (!GetPlayerAndWeapon().Some(out var d))
-		{
-			return;
-		}
-
-		var (player, pwa, firearmController) = d;
-		var firearms = firearmController.Firearms;
-		var weaponPrefab = firearms.WeaponPrefab;
-		if (weaponPrefab.FirearmsAnimator.Animator is UnityAnimatorWrapper animator)
-		{
-			var layerIndex = animator.GetLayerIndex(layerName);
-			animator.Play(stateName, layerIndex, 0);
-		}
-
-		// RELOAD PROGRESSIVE | Hands
-	}
-
-	public void PlayReload()
-	{
-		if (!GetPlayerAndWeapon().Some(out var d))
-		{
-			Logger.LogWarning($"Nope");
-			return;
-		}
-
-		var (player, pwa, firearmController) = d;
-		var firearms = firearmController.Firearms;
-		var weaponPrefab = firearms.WeaponPrefab;
-		// weaponPrefab.FirearmsAnimator.Reload(0, 0, false);
-
-		// weaponPrefab.FirearmsAnimator.Animator.SetTrigger(TRIGGER_LOOK);
-		// AnimationControllerParametersTable.TriggerLook(base.Animator);
-
-		Logger.LogWarning($"Reload");
-	}
-
-	public Option<(Player, ProceduralWeaponAnimation, FirearmController)> GetPlayerAndWeapon()
-	{
-        if (!Singleton<GameWorld>.Instantiated)
-        {
-            return default;
-        }
-
-        var player = Singleton<GameWorld>.Instance.MainPlayer;
-		if (!player)
-		{
-            return default;
-		}
-		if (!player.IsYourPlayer)
-		{
-            return default;
-		}
-
-		var pwa = player.ProceduralWeaponAnimation;
-		var _pwa = new ProceduralWeaponAnimation_Proxy(pwa);
-		var firearmController = _pwa._firearmController;
-		if (!firearmController)
-		{
-            return default;
-		}
-
-		return new((player, pwa, firearmController));
-	}
-
-    public void OnCreatedItemGameObject(Item item, GameObject itemGameObject)
-	{
-		var instanceID = itemGameObject.GetInstanceID();
-		Items.Add(instanceID, item);
-	}
-
-
-    public void OnItemDestroyed(AssetPoolObject assetPoolObject)
-	{
-		var instanceID = assetPoolObject.gameObject.GetInstanceID();
-		if (Items.Remove(instanceID))
-		{
-
-		}
-	}
-
 }
-
-public class Patch_ObjectsFactory_CreateItemAsync : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-		Type[] parameters = [typeof(Item), typeof(ECameraType), typeof(IPlayer), typeof(bool), typeof(YieldDelegate), typeof(CancellationToken)];
-        return AccessTools.Method(typeof(ObjectsFactory), nameof(ObjectsFactory.CreateItemAsync), parameters);
-    }
-
-    [PatchPostfix]
-    public static void Postfix(ref Task<GameObject> __result, Item item)
-	{
-		// TODO we should tighten filter, but whats the right approach?
-		if (item is CompoundItem)
-		{
-			__result = WrapTask(__result, item);
-		}
-	}
-
-    private static async Task<GameObject> WrapTask(Task<GameObject> task, Item item)
-    {
-        var itemGameObject = await task;
-		Plugin.Instance.OnCreatedItemGameObject(item, itemGameObject);
-		return itemGameObject;
-    }
-}
-
-public class Patch_AssetPoolObject_ReturnToPool : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(AssetPoolObject), nameof(AssetPoolObject.ReturnToPool));
-    }
-
-    [PatchPrefix]
-    public static void Prefix(AssetPoolObject __instance)
-	{
-		Plugin.Instance.OnItemDestroyed(__instance);
-	}
-}
-
-public class Patch_AssetPoolObject_OnDestroy : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(AssetPoolObject), nameof(AssetPoolObject.OnDestroy));
-    }
-
-    [PatchPrefix]
-    public static void Prefix(AssetPoolObject __instance)
-	{
-		Plugin.Instance.OnItemDestroyed(__instance);
-	}
-}
-
-public struct ProceduralWeaponAnimation_Proxy(ProceduralWeaponAnimation instance)
-{
-    private readonly ProceduralWeaponAnimation __instance = instance;
-
-    private static TypedFieldInfo<ProceduralWeaponAnimation, FirearmController> __firearmController = new("_firearmController");
-
-    public FirearmController _firearmController { get { return __firearmController.Get(__instance); } set { __firearmController.Set(__instance, value); } }
-}
-
-
 
 public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 {
@@ -367,20 +199,6 @@ public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
 		var reload = Plugin.Instance.Reloads.Peek();
 		reload.NewMag = item;
 		reload.OldBone = oldBone;
-	}
-}
-
-public class Patch_AnimationControllerEventsTable_FireUseSecondMagForReload : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(AnimationControllerEventsTable), nameof(AnimationControllerEventsTable.FireUseSecondMagForReload));
-    }
-
-    [PatchPostfix]
-    public static void Postfix()
-	{
-		Logger.LogWarning($"Patch_AnimationControllerEventsTable_FireUseSecondMagForReload");
 	}
 }
 
