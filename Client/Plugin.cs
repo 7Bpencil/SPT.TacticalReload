@@ -328,6 +328,10 @@ public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 		{
 			return;
 		}
+		if (__instance.AnimationEventsEmitter == null)
+		{
+			return;
+		}
 		foreach (var ieventBehaviour in __instance.AnimationEventsEmitter._animationEventsStateBehaviours)
 		{
 			if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
