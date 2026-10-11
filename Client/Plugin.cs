@@ -212,7 +212,7 @@ public class Plugin : BaseUnityPlugin
 		}
 
         var json = JsonConvert.SerializeObject(result, Formatting.Indented);
-        var filePath = "animation-events.json";
+        var filePath = "animation-events.jsonc";
         SafeIO.WriteAllTextAsync(filePath, json);
 	}
 
