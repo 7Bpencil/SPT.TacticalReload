@@ -6,105 +6,63 @@
     "AnimationEvents": [
       {
         "Parameter": {
-          "BoolParam": false,
-          "FloatParam": 0.0,
-          "IntParam": 0,
-          "StringParam": "",
           "ParamType": "None"
         },
         "_functionName": "PutMagToRig",
         "_functionNameHash": 0,
         "Enabled": true,
         "_time": 0.0,
-        "EventConditions": [],
-        "FunctionName": "PutMagToRig",
-        "FunctionNameHash": 0,
-        "Time": 0.0
+        "EventConditions": []
       },
       {
         "Parameter": {
-          "BoolParam": false,
-          "FloatParam": 0.0,
-          "IntParam": 0,
-          "StringParam": "",
           "ParamType": "None"
         },
         "_functionName": "MagShow",
         "_functionNameHash": 1551431816,
         "Enabled": true,
         "_time": 0.0909571648,
-        "EventConditions": [],
-        "FunctionName": "MagShow",
-        "FunctionNameHash": 1551431816,
-        "Time": 0.0909571648
+        "EventConditions": []
       },
       {
         "Parameter": {
-          "BoolParam": false,
-          "FloatParam": 0.0,
-          "IntParam": 0,
-          "StringParam": "",
           "ParamType": "None"
         },
         "_functionName": "MagOut",
         "_functionNameHash": 1947938901,
         "Enabled": true,
         "_time": 0.355367541,
-        "EventConditions": [],
-        "FunctionName": "MagOut",
-        "FunctionNameHash": 1947938901,
-        "Time": 0.355367541
+        "EventConditions": []
       },
       {
         "Parameter": {
-          "BoolParam": false,
-          "FloatParam": 0.0,
-          "IntParam": 0,
-          "StringParam": "",
           "ParamType": "None"
         },
         "_functionName": "MagIn",
         "_functionNameHash": 1258896930,
         "Enabled": true,
         "_time": 0.6002115,
-        "EventConditions": [],
-        "FunctionName": "MagIn",
-        "FunctionNameHash": 1258896930,
-        "Time": 0.6002115
+        "EventConditions": []
       },
       {
         "Parameter": {
-          "BoolParam": false,
-          "FloatParam": 0.0,
-          "IntParam": 0,
-          "StringParam": "",
           "ParamType": "None"
         },
         "_functionName": "MagHide",
         "_functionNameHash": 798565163,
         "Enabled": true,
         "_time": 0.793103456,
-        "EventConditions": [],
-        "FunctionName": "MagHide",
-        "FunctionNameHash": 798565163,
-        "Time": 0.793103456
+        "EventConditions": []
       },
       {
         "Parameter": {
-          "BoolParam": false,
-          "FloatParam": 0.0,
-          "IntParam": 0,
-          "StringParam": "",
           "ParamType": "None"
         },
         "_functionName": "ReplaceSecondMag",
         "_functionNameHash": 0,
         "Enabled": true,
         "_time": 0.991980731,
-        "EventConditions": [],
-        "FunctionName": "ReplaceSecondMag",
-        "FunctionNameHash": 0,
-        "Time": 0.991980731
+        "EventConditions": []
       }
     ]
   },
@@ -115,20 +73,13 @@
     "AnimationEvents": [
       {
         "Parameter": {
-          "BoolParam": false,
-          "FloatParam": 0.0,
-          "IntParam": 0,
-          "StringParam": "",
           "ParamType": "None"
         },
         "_functionName": "UseSecondMagForReload",
         "_functionNameHash": 0,
         "Enabled": true,
         "_time": 0.0,
-        "EventConditions": [],
-        "FunctionName": "UseSecondMagForReload",
-        "FunctionNameHash": 0,
-        "Time": 0.0
+        "EventConditions": []
       }
     ]
   }
