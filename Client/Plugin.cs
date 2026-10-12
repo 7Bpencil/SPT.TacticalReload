@@ -44,6 +44,8 @@ using System.Threading.Tasks;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using JsonType;
 using GPUInstancer;
 using Koenigz.PerfectCulling.EFT;
@@ -118,6 +120,7 @@ public class Plugin : BaseUnityPlugin
 	public static Plugin Instance;
 
 	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> CustomAnimationsData;
+	public Dictionary<string, AnimationClip> CustomAnimations = new();
 	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
 
     private void Awake()
@@ -144,6 +147,11 @@ public class Plugin : BaseUnityPlugin
         var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 		CustomAnimationsData = LoadCustomAnimationsData(assemblyDir);
 		Reloads = new();
+
+		var bundlePath = Path.Combine(assemblyDir, "data", "animations", "m4_tactical_reload.bundle");
+		var bundle = AssetBundle.LoadFromFile(bundlePath);
+		CustomAnimations["Armature_Armature_m4a1_hands_out_Base Layer"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_hands_out.anim");
+		CustomAnimations["Armature_Armature_m4a1_idle_armed_Base Layer"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_reload_admin.anim");
 	}
 
 	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> LoadCustomAnimationsData(string assemblyDir)
@@ -245,22 +253,34 @@ public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 		{
 			return;
 		}
-		if (!Plugin.Instance.CustomAnimationsData.TryGetValue(____weaponData.StringTemplateId, out var customAnimationsData))
+		// if (!Plugin.Instance.CustomAnimationsData.TryGetValue(____weaponData.StringTemplateId, out var customAnimationsData))
+		// {
+		// 	return;
+		// }
+		// // replace tactical animations events data with ones designed to work with our system
+		// foreach (var ieventBehaviour in __instance.AnimationEventsEmitter._animationEventsStateBehaviours)
+		// {
+		// 	if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
+		// 	{
+		// 		continue;
+		// 	}
+		// 	if (!customAnimationsData.TryGetValue(eventBehaviour.FullNameHash, out var customData))
+		// 	{
+		// 		continue;
+		// 	}
+		// 	eventBehaviour.EventsData._stateHashToEventsCollection[eventBehaviour.EventsListId]._animationEvents = customData.AnimationEvents;
+		// }
+
+
+		if (__instance.Animator is UnityAnimatorWrapper animatorWrapper)
 		{
-			return;
-		}
-		// replace tactical animations events data with ones designed to work with our system
-		foreach (var ieventBehaviour in __instance.AnimationEventsEmitter._animationEventsStateBehaviours)
-		{
-			if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
+	        var animatorOverrideController = new AnimatorOverrideController(animatorWrapper.runtimeAnimatorController);
+	        animatorWrapper.runtimeAnimatorController = animatorOverrideController;
+			__instance._originalAnimatorController = animatorOverrideController;
+			foreach (var (originalClipName, overrideClip) in Plugin.Instance.CustomAnimations)
 			{
-				continue;
+				animatorOverrideController[originalClipName] = overrideClip;
 			}
-			if (!customAnimationsData.TryGetValue(eventBehaviour.FullNameHash, out var customData))
-			{
-				continue;
-			}
-			eventBehaviour.EventsData._stateHashToEventsCollection[eventBehaviour.EventsListId]._animationEvents = customData.AnimationEvents;
 		}
 	}
 }
@@ -297,10 +317,10 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 	{
 		// TODO here we decide if reload is tactical
 
-		if (!Plugin.Instance.CustomAnimationsData.ContainsKey(__instance.Weapon.StringTemplateId))
-		{
-			return;
-		}
+		// if (!Plugin.Instance.CustomAnimationsData.ContainsKey(__instance.Weapon.StringTemplateId))
+		// {
+		// 	return;
+		// }
 
 		Plugin.Instance.Reloads.Add(__instance.FirearmsAnimator, new()
 		{
