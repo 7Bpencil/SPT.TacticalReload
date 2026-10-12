@@ -11,6 +11,7 @@ using AnimationSystem;
 using AnimationEventSystem;
 using BepInEx;
 using BepInEx.Configuration;
+using BepInEx.Logging;
 using Comfort.Common;
 using Diz.Skinning;
 using Diz.Jobs;
@@ -105,13 +106,211 @@ public class AnimationBehaviourData
 	public List<AnimationEvent> AnimationEvents;
 }
 
+public enum ReloadState
+{
+	Original,
+	Start,
+	StartToReload,
+	Reload,
+	ReloadToEnd,
+	End,
+}
+
+public readonly record struct AnimationClipWrapper
+(
+	AnimationClip Clip,
+	AnimationClipPlayable Playable,
+	int Index
+);
+
 public class ReloadData
 {
 	public ReloadExternalMagOperation Operation;
+
 	public Item OldMagItem;
 	public Transform OldMagView;
 	public Transform NewMagView;
 	public Transform OldBone;
+
+	public AnimationClipWrapper ReloadStart;
+	public AnimationClipWrapper Reload;
+	public AnimationClipWrapper ReloadEnd;
+
+	// TODO we need idle -> reload start and reload end -> idle transitions
+	public double ReloadStartToReloadTransition = 0.25;
+	public double ReloadToReloadEndTransition = 0.25;
+
+	public bool IsInit;
+	public ReloadState ReloadState;
+    public Animator Animator;
+    public PlayableGraph Graph;
+    public AnimatorControllerPlayable VanillaController;
+    public AnimationMixerPlayable Mixer;
+    public AnimationPlayableOutput Output;
+
+	public void Init(Animator animator)
+	{
+		if (IsInit)
+		{
+			return;
+		}
+
+		Animator = animator;
+		Graph = PlayableGraph.Create("Tactical Reload");
+		Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
+
+		var reloadStartClip = Plugin.Instance.CustomAnimations["RELOAD PROGRESSIVE"];
+		var reloadClip = Plugin.Instance.CustomAnimations["RELOAD ADMIN"];
+		var reloadEndClip = Plugin.Instance.CustomAnimations["RELOAD END"];
+
+		var reloadStartPlayable = AnimationClipPlayable.Create(Graph, reloadStartClip);
+		var reloadPlayable = AnimationClipPlayable.Create(Graph, reloadClip);
+		var reloadEndPlayable = AnimationClipPlayable.Create(Graph, reloadEndClip);
+
+		VanillaController = AnimatorControllerPlayable.Create(Graph, Animator.runtimeAnimatorController);
+		ReloadStart = new(reloadStartClip, reloadStartPlayable, 1);
+		Reload = new(reloadClip, reloadPlayable, 2);
+		ReloadEnd = new(reloadEndClip, reloadEndPlayable, 3);
+
+		Mixer = AnimationMixerPlayable.Create(Graph, 4);
+
+		Mixer.ConnectInput(0, VanillaController, 0);
+		Mixer.ConnectInput(ReloadStart.Index, ReloadStart.Playable, 0);
+		Mixer.ConnectInput(Reload.Index, Reload.Playable, 0);
+		Mixer.ConnectInput(ReloadEnd.Index, ReloadEnd.Playable, 0);
+
+		Mixer.SetInputWeight(0, 1);
+		Mixer.SetInputWeight(ReloadStart.Index, 0);
+		Mixer.SetInputWeight(Reload.Index, 0);
+		Mixer.SetInputWeight(ReloadEnd.Index, 0);
+
+		Output = AnimationPlayableOutput.Create(Graph, "Tactical Reload Output", Animator);
+		Output.SetSourcePlayable(Mixer);
+		Graph.Play();
+
+		IsInit = true;
+		ReloadState = ReloadState.Original;
+	}
+
+	public void StartReload()
+	{
+		ReloadState = ReloadState.Start;
+        ReloadStart.Playable.SetTime(0);
+        Mixer.SetInputWeight(0, 0);
+        Mixer.SetInputWeight(ReloadStart.Index, 1);
+        Mixer.SetInputWeight(Reload.Index, 0);
+        Mixer.SetInputWeight(ReloadEnd.Index, 0);
+	}
+
+	public void Update()
+	{
+		if (!IsInit)
+		{
+			return;
+		}
+
+        switch (ReloadState)
+        {
+            case ReloadState.Start:
+			{
+				if (PlayState(ReloadStart, Reload, ReloadStartToReloadTransition))
+				{
+					ReloadState = ReloadState.StartToReload;
+				}
+                break;
+			}
+            case ReloadState.StartToReload:
+			{
+				if (PlayStateTransition(ReloadStart, Reload, ReloadStartToReloadTransition))
+				{
+					ReloadState = ReloadState.Reload;
+				}
+                break;
+			}
+            case ReloadState.Reload:
+			{
+				if (PlayState(Reload, ReloadEnd, ReloadToReloadEndTransition))
+				{
+					ReloadState = ReloadState.ReloadToEnd;
+				}
+                break;
+			}
+            case ReloadState.ReloadToEnd:
+			{
+				if (PlayStateTransition(Reload, ReloadEnd, ReloadToReloadEndTransition))
+				{
+					ReloadState = ReloadState.End;
+				}
+                break;
+			}
+            case ReloadState.End:
+			{
+				var reloadEndTime = ReloadEnd.Playable.GetTime();
+				var reloadEndDuration = ReloadEnd.Clip.length;
+
+		        if (reloadEndTime >= reloadEndDuration)
+		        {
+					ReloadState = ReloadState.Original;
+
+					Mixer.SetInputWeight(0, 0);
+					Mixer.SetInputWeight(1, 0);
+					Mixer.SetInputWeight(2, 0);
+					Mixer.SetInputWeight(3, 0);
+
+			        Graph.Stop();
+					Output.SetSourcePlayable(Playable.Null);
+
+					// TODO force IDLE state?
+		        }
+                break;
+			}
+        }
+	}
+
+	public bool PlayState(AnimationClipWrapper fromState, AnimationClipWrapper toState, double transitionDuration)
+	{
+		var fromTime = fromState.Playable.GetTime();
+		var fromDuration = fromState.Clip.length;
+		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
+
+		if (toTime >= 0)
+		{
+	        Mixer.SetInputWeight(fromState.Index, fromWeight);
+	        Mixer.SetInputWeight(toState.Index, toWeight);
+	        toState.Playable.SetTime(toTime);
+			return true;
+		}
+
+		return false;
+	}
+
+	public bool PlayStateTransition(AnimationClipWrapper fromState, AnimationClipWrapper toState, double transitionDuration)
+	{
+		var fromTime = fromState.Playable.GetTime();
+		var fromDuration = fromState.Clip.length;
+		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
+
+        Mixer.SetInputWeight(fromState.Index, fromWeight);
+        Mixer.SetInputWeight(toState.Index, toWeight);
+
+		if (toTime >= transitionDuration)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	public static (float fromWeight, float toWeight, double toTime) GetTransitionWeights(
+		double fromClipTime,
+		double fromClipDuration,
+		double transitionDuration
+	) {
+		var toTime = fromClipTime - (fromClipDuration - transitionDuration);
+		var toWeight = System.Math.Clamp(toTime / transitionDuration, 0, 1);
+		var fromWeight = 1 - toWeight;
+		return ((float)fromWeight, (float)toWeight, toTime);
+	}
 }
 
 [BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
@@ -119,13 +318,17 @@ public class Plugin : BaseUnityPlugin
 {
 	public static Plugin Instance;
 
+	public ManualLogSource LoggerInstance;
+
 	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> CustomAnimationsData;
-	public Dictionary<string, AnimationClip> CustomAnimations = new();
+	public Dictionary<string, AnimationClip> CustomAnimations;
 	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
 
     private void Awake()
 	{
 		Instance = this;
+
+		LoggerInstance = Logger;
 
 		new Patch_WeaponPrefab_InitHotObjects().Enable();
 		new Patch_ReloadExternalMagOperation_Reset().Enable();
@@ -150,8 +353,10 @@ public class Plugin : BaseUnityPlugin
 
 		var bundlePath = Path.Combine(assemblyDir, "data", "animations", "m4_tactical_reload.bundle");
 		var bundle = AssetBundle.LoadFromFile(bundlePath);
-		CustomAnimations["Armature_Armature_m4a1_hands_out_Base Layer"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_hands_out.anim");
-		CustomAnimations["Armature_Armature_m4a1_idle_armed_Base Layer"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_reload_admin.anim");
+		CustomAnimations = new();
+		CustomAnimations["RELOAD PROGRESSIVE"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_hands_out.anim");
+		CustomAnimations["RELOAD ADMIN"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_reload_admin.anim");
+		CustomAnimations["RELOAD END"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_hands_in_half_2.anim");
 	}
 
 	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> LoadCustomAnimationsData(string assemblyDir)
@@ -272,16 +477,16 @@ public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
 		// }
 
 
-		if (__instance.Animator is UnityAnimatorWrapper animatorWrapper)
-		{
-	        var animatorOverrideController = new AnimatorOverrideController(animatorWrapper.runtimeAnimatorController);
-	        animatorWrapper.runtimeAnimatorController = animatorOverrideController;
-			__instance._originalAnimatorController = animatorOverrideController;
-			foreach (var (originalClipName, overrideClip) in Plugin.Instance.CustomAnimations)
-			{
-				animatorOverrideController[originalClipName] = overrideClip;
-			}
-		}
+		// if (__instance.Animator is UnityAnimatorWrapper animatorWrapper)
+		// {
+	 //        var animatorOverrideController = new AnimatorOverrideController(animatorWrapper.runtimeAnimatorController);
+	 //        animatorWrapper.runtimeAnimatorController = animatorOverrideController;
+		// 	__instance._originalAnimatorController = animatorOverrideController;
+		// 	foreach (var (originalClipName, overrideClip) in Plugin.Instance.CustomAnimations)
+		// 	{
+		// 		animatorOverrideController[originalClipName] = overrideClip;
+		// 	}
+		// }
 	}
 }
 
@@ -347,10 +552,14 @@ public class Patch_FirearmsAnimator_Reload : ModulePatch
 			__instance.SetMagTypeCurrent(currentMagType);
 			__instance.SetMagTypeNew(nextMagType);
 
-			if (__instance.Animator is UnityAnimatorWrapper animator)
+			if (__instance.Animator is UnityAnimatorWrapper animatorWrapper)
 			{
-				var layerIndex = animator.GetLayerIndex("Hands"); // TODO cache
-				animator.Play("RELOAD PROGRESSIVE", layerIndex, 0);
+				// var layerIndex = animatorWrapper.GetLayerIndex("Hands"); // TODO cache
+				// animatorWrapper.Play("RELOAD PROGRESSIVE", layerIndex, 0);
+
+				// TODO reuse playable graph
+				reload.Init(animatorWrapper.Animator);
+				reload.StartReload();
 			}
 
 			return false;
@@ -427,7 +636,7 @@ public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
 			var viewSlot =  __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
 			var newMagView = viewSlot.ItemView;
 			var oldBone = viewSlot.Bone;
-			var newBone = oldBone.parent.Find("mod_magazine_new"); // TODO cache
+			var newBone = oldBone.parent.Find("mod_magazine_new"); // TODO if not here, create it, also cache for future use
 			newMagView.SetParent(newBone, false);
 
 			reload.NewMagView = newMagView;
