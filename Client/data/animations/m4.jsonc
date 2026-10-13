@@ -1,59 +1,59 @@
-[
-  {
-    "FullName": "Hands.RELOAD ADMIN",
-    "FullNameHash": 1745729803,
-    "EventsListId": 25,
-    "AnimationEvents": [
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagOut",
-        "_functionNameHash": 1947938901,
-        "Enabled": true,
-        "_time": 0,
-        "EventConditions": []
+{
+  "ReloadStart": "Assets/M4old/Content/Weapons/m4a1/m4a1_hands_out.anim",
+  "Reload": "Assets/M4old/Content/Weapons/m4a1/m4a1_reload_admin.anim",
+  "ReloadEnd": "Assets/M4old/Content/Weapons/m4a1/m4a1_hands_in_half_2.anim",
+  "StartToReloadTransition": 0.25,
+  "ReloadToEndTransition": 0.25,
+  "ReloadAnimationEvents": [
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagHide",
-        "_functionNameHash": 798565163,
-        "Enabled": true,
-        "_time": 0,
-        "EventConditions": [],
+      "_functionName": "MagOut",
+      "_functionNameHash": 1947938901,
+      "Enabled": true,
+      "_time": 0,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagShow",
-        "_functionNameHash": 1551431816,
-        "Enabled": true,
-        "_time": 0.0909571648,
-        "EventConditions": []
+      "_functionName": "MagHide",
+      "_functionNameHash": 798565163,
+      "Enabled": true,
+      "_time": 0,
+      "EventConditions": [],
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "UseSecondMagForReload",
-        "_functionNameHash": 67499002,
-        "Enabled": true,
-        "_time": 0.77777777777,
-        "EventConditions": []
+      "_functionName": "MagShow",
+      "_functionNameHash": 1551431816,
+      "Enabled": true,
+      "_time": 0.0909571648,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagIn",
-        "_functionNameHash": 1258896930,
-        "Enabled": true,
-        "_time": 0.83838383838,
-        "EventConditions": []
-      }
-    ]
-  }
-]
+      "_functionName": "UseSecondMagForReload",
+      "_functionNameHash": 67499002,
+      "Enabled": true,
+      "_time": 0.77777777777,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
+      },
+      "_functionName": "MagIn",
+      "_functionNameHash": 1258896930,
+      "Enabled": true,
+      "_time": 0.83838383838,
+      "EventConditions": []
+    }
+  ]
+}

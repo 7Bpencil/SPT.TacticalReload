@@ -98,6 +98,19 @@ namespace SevenBoldPencil.TacticalReload;
 // [Warning:ModulePatch] Start
 
 [Serializable]
+public class ReloadAnimationData
+{
+	public string ReloadStart;
+	public string Reload;
+	public string ReloadEnd;
+
+	public double StartToReloadTransition;
+	public double ReloadToEndTransition;
+
+	public List<AnimationEvent> ReloadAnimationEvents;
+}
+
+[Serializable]
 public class AnimationBehaviourData
 {
 	public string FullName;

@@ -1,182 +1,92 @@
-[
-  {
-    "FullName": "Hands.RELOAD HIT",
-    "FullNameHash": 1539692279,
-    "EventsListId": 22,
-    "AnimationEvents": [
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagOut",
-        "_functionNameHash": 1947938901,
-        "Enabled": true,
-        "_time": 0,
-        "EventConditions": []
+{
+  "ReloadStart": "Assets/AK103/Content/Weapons/ak100/ak100_hands_out.anim",
+  "Reload": "Assets/AK103/Content/Weapons/ak100/ak100_mag_admin.anim",
+  "ReloadEnd": "Assets/AK103/Content/Weapons/ak100/ak100_hands_in_half_2.anim",
+  "StartToReloadTransition": 0.03041387,
+  "ReloadToEndTransition": 0.1320968,
+  "ReloadAnimationEvents": [
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagHide",
-        "_functionNameHash": 798565163,
-        "Enabled": true,
-        "_time": 0,
-        "EventConditions": [],
+      "_functionName": "MagOut",
+      "_functionNameHash": 1947938901,
+      "Enabled": true,
+      "_time": 0,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagShow",
-        "_functionNameHash": 1551431816,
-        "Enabled": true,
-        "_time": 0.03,
-        "EventConditions": []
+      "_functionName": "MagHide",
+      "_functionNameHash": 798565163,
+      "Enabled": true,
+      "_time": 0,
+      "EventConditions": [],
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "StringParam": "MagHit",
-          "ParamType": "String"
-        },
-        "_functionName": "Sound",
-        "_functionNameHash": 1554795451,
-        "Enabled": true,
-        "_time": 0.363828659,
-        "EventConditions": []
+      "_functionName": "MagShow",
+      "_functionNameHash": 1551431816,
+      "Enabled": true,
+      "_time": 0.066631414,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "StringParam": "MagOut",
+        "ParamType": "String"
       },
-      {
-        "Parameter": {
-          "StringParam": "MagOut",
-          "ParamType": "String"
-        },
-        "_functionName": "Sound",
-        "_functionNameHash": 1554795451,
-        "Enabled": true,
-        "_time": 0.411422521,
-        "EventConditions": []
+      "_functionName": "Sound",
+      "_functionNameHash": 1554795451,
+      "Enabled": true,
+      "_time": 0.291380227,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "StringParam": "MagIn",
+        "ParamType": "String"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "UseSecondMagForReload",
-        "_functionNameHash": 67499002,
-        "Enabled": true,
-        "_time": 0.55,
-        "EventConditions": []
+      "_functionName": "Sound",
+      "_functionNameHash": 1554795451,
+      "Enabled": true,
+      "_time": 0.57535696,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagIn",
-        "_functionNameHash": 1258896930,
-        "Enabled": true,
-        "_time": 0.753040731,
-        "EventConditions": []
+      "_functionName": "UseSecondMagForReload",
+      "_functionNameHash": 67499002,
+      "Enabled": true,
+      "_time": 0.8,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "StringParam": "MagSbrosnik",
+        "ParamType": "String"
       },
-      {
-        "Parameter": {
-          "StringParam": "MagIn",
-          "ParamType": "String"
-        },
-        "_functionName": "Sound",
-        "_functionNameHash": 1554795451,
-        "Enabled": true,
-        "_time": 0.779470742,
-        "EventConditions": []
-      }
-    ]
-  },
-  {
-    "FullName": "Hands.RELOAD ADMIN",
-    "FullNameHash": 700904233,
-    "EventsListId": 24,
-    "AnimationEvents": [
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagOut",
-        "_functionNameHash": 1947938901,
-        "Enabled": true,
-        "_time": 0,
-        "EventConditions": []
+      "_functionName": "Sound",
+      "_functionNameHash": 1554795451,
+      "Enabled": true,
+      "_time": 0.8043363,
+      "EventConditions": []
+    },
+    {
+      "Parameter": {
+        "ParamType": "None"
       },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagHide",
-        "_functionNameHash": 798565163,
-        "Enabled": true,
-        "_time": 0,
-        "EventConditions": [],
-      },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagShow",
-        "_functionNameHash": 1551431816,
-        "Enabled": true,
-        "_time": 0.066631414,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
-          "StringParam": "MagOut",
-          "ParamType": "String"
-        },
-        "_functionName": "Sound",
-        "_functionNameHash": 1554795451,
-        "Enabled": true,
-        "_time": 0.291380227,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
-          "StringParam": "MagIn",
-          "ParamType": "String"
-        },
-        "_functionName": "Sound",
-        "_functionNameHash": 1554795451,
-        "Enabled": true,
-        "_time": 0.57535696,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "UseSecondMagForReload",
-        "_functionNameHash": 67499002,
-        "Enabled": true,
-        "_time": 0.8,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
-          "StringParam": "MagSbrosnik",
-          "ParamType": "String"
-        },
-        "_functionName": "Sound",
-        "_functionNameHash": 1554795451,
-        "Enabled": true,
-        "_time": 0.8043363,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagIn",
-        "_functionNameHash": 1258896930,
-        "Enabled": true,
-        "_time": 0.91,
-        "EventConditions": []
-      }
-    ]
-  }
-]
+      "_functionName": "MagIn",
+      "_functionNameHash": 1258896930,
+      "Enabled": true,
+      "_time": 0.91,
+      "EventConditions": []
+    }
+  ]
+}
