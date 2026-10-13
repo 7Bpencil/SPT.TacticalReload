@@ -116,11 +116,13 @@ public enum ReloadState
 	End,
 }
 
-public readonly record struct AnimationClipWrapper
+public record struct AnimationClipWrapper
 (
 	AnimationClip Clip,
 	AnimationClipPlayable Playable,
-	int Index
+	int Index,
+	List<AnimationEvent> AnimationEvents,
+	int LastPlayedAnimationEventIndex
 );
 
 public class ReloadData
@@ -168,9 +170,9 @@ public class ReloadData
 		var reloadEndPlayable = AnimationClipPlayable.Create(Graph, reloadEndClip);
 
 		VanillaController = AnimatorControllerPlayable.Create(Graph, Animator.runtimeAnimatorController);
-		ReloadStart = new(reloadStartClip, reloadStartPlayable, 1);
-		Reload = new(reloadClip, reloadPlayable, 2);
-		ReloadEnd = new(reloadEndClip, reloadEndPlayable, 3);
+		ReloadStart = new(reloadStartClip, reloadStartPlayable, 1, [], -1);
+		Reload = new(reloadClip, reloadPlayable, 2, Plugin.Instance.CustomAnimationsData["5447a9cd4bdc2dbd208b4567"][1745729803].AnimationEvents, -1);
+		ReloadEnd = new(reloadEndClip, reloadEndPlayable, 3, [], -1);
 
 		Mixer = AnimationMixerPlayable.Create(Graph, 4);
 
@@ -200,6 +202,7 @@ public class ReloadData
         Mixer.SetInputWeight(ReloadStart.Index, 1);
         Mixer.SetInputWeight(Reload.Index, 0);
         Mixer.SetInputWeight(ReloadEnd.Index, 0);
+		TryFireAnimationEvents(ref ReloadStart);
 	}
 
 	public void Update()
@@ -213,7 +216,7 @@ public class ReloadData
         {
             case ReloadState.Start:
 			{
-				if (PlayState(ReloadStart, Reload, ReloadStartToReloadTransition))
+				if (PlayState(ref ReloadStart, ref Reload, ReloadStartToReloadTransition))
 				{
 					ReloadState = ReloadState.StartToReload;
 				}
@@ -221,7 +224,7 @@ public class ReloadData
 			}
             case ReloadState.StartToReload:
 			{
-				if (PlayStateTransition(ReloadStart, Reload, ReloadStartToReloadTransition))
+				if (PlayStateTransition(ref ReloadStart, ref Reload, ReloadStartToReloadTransition))
 				{
 					ReloadState = ReloadState.Reload;
 				}
@@ -229,7 +232,7 @@ public class ReloadData
 			}
             case ReloadState.Reload:
 			{
-				if (PlayState(Reload, ReloadEnd, ReloadToReloadEndTransition))
+				if (PlayState(ref Reload, ref ReloadEnd, ReloadToReloadEndTransition))
 				{
 					ReloadState = ReloadState.ReloadToEnd;
 				}
@@ -237,7 +240,7 @@ public class ReloadData
 			}
             case ReloadState.ReloadToEnd:
 			{
-				if (PlayStateTransition(Reload, ReloadEnd, ReloadToReloadEndTransition))
+				if (PlayStateTransition(ref Reload, ref ReloadEnd, ReloadToReloadEndTransition))
 				{
 					ReloadState = ReloadState.End;
 				}
@@ -267,31 +270,41 @@ public class ReloadData
         }
 	}
 
-	public bool PlayState(AnimationClipWrapper fromState, AnimationClipWrapper toState, double transitionDuration)
+	public bool PlayState(ref AnimationClipWrapper fromState, ref AnimationClipWrapper toState, double transitionDuration)
 	{
 		var fromTime = fromState.Playable.GetTime();
 		var fromDuration = fromState.Clip.length;
 		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
+
+		// Plugin.Instance.LoggerInstance.LogWarning($"PlayState          : {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
+
+		TryFireAnimationEvents(ref fromState);
 
 		if (toTime >= 0)
 		{
 	        Mixer.SetInputWeight(fromState.Index, fromWeight);
 	        Mixer.SetInputWeight(toState.Index, toWeight);
 	        toState.Playable.SetTime(toTime);
+			TryFireAnimationEvents(ref toState);
 			return true;
 		}
 
 		return false;
 	}
 
-	public bool PlayStateTransition(AnimationClipWrapper fromState, AnimationClipWrapper toState, double transitionDuration)
+	public bool PlayStateTransition(ref AnimationClipWrapper fromState, ref AnimationClipWrapper toState, double transitionDuration)
 	{
 		var fromTime = fromState.Playable.GetTime();
 		var fromDuration = fromState.Clip.length;
 		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
 
+		// Plugin.Instance.LoggerInstance.LogWarning($"PlayStateTransition: {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
+
         Mixer.SetInputWeight(fromState.Index, fromWeight);
         Mixer.SetInputWeight(toState.Index, toWeight);
+
+		TryFireAnimationEvents(ref fromState);
+		TryFireAnimationEvents(ref toState);
 
 		if (toTime >= transitionDuration)
 		{
@@ -310,6 +323,23 @@ public class ReloadData
 		var toWeight = System.Math.Clamp(toTime / transitionDuration, 0, 1);
 		var fromWeight = 1 - toWeight;
 		return ((float)fromWeight, (float)toWeight, toTime);
+	}
+
+	public void TryFireAnimationEvents(ref AnimationClipWrapper state)
+	{
+		var time = state.Playable.GetTime() / state.Clip.length;
+		var animationEvents = state.AnimationEvents;
+		var animationEventsEmitter = Operation.Controller._weaponPrefab.AnimationEventsEmitter;
+		for (var i = 0; i < animationEvents.Count; i++)
+		{
+			var animationEvent = animationEvents[i];
+			if (time >= animationEvent.Time && i > state.LastPlayedAnimationEventIndex)
+			{
+				// Plugin.Instance.LoggerInstance.LogWarning($"Fire Event: {animationEvent.FunctionName}");
+				state.LastPlayedAnimationEventIndex = i;
+				animationEventsEmitter.SendEvent(animationEvent.FunctionName, animationEvent.FunctionNameHash, animationEvent.Parameter, 0);
+			}
+		}
 	}
 }
 
@@ -397,6 +427,14 @@ public class Plugin : BaseUnityPlugin
 		}
 
 		return result;
+	}
+
+	public void Update()
+	{
+		foreach (var reload in Reloads.Values)
+		{
+			reload.Update();
+		}
 	}
 
 	public void DumpAnimationData(WeaponPrefab weaponPrefab)

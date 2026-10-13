@@ -8,11 +8,21 @@
         "Parameter": {
           "ParamType": "None"
         },
-        "_functionName": "PutMagToRig",
-        "_functionNameHash": 0,
+        "_functionName": "MagOut",
+        "_functionNameHash": 1947938901,
         "Enabled": true,
-        "_time": 0.0,
+        "_time": 0,
         "EventConditions": []
+      },
+      {
+        "Parameter": {
+          "ParamType": "None"
+        },
+        "_functionName": "MagHide",
+        "_functionNameHash": 798565163,
+        "Enabled": true,
+        "_time": 0,
+        "EventConditions": [],
       },
       {
         "Parameter": {
@@ -28,10 +38,10 @@
         "Parameter": {
           "ParamType": "None"
         },
-        "_functionName": "MagOut",
-        "_functionNameHash": 1947938901,
+        "_functionName": "UseSecondMagForReload",
+        "_functionNameHash": 67499002,
         "Enabled": true,
-        "_time": 0.355367541,
+        "_time": 0.77777777777,
         "EventConditions": []
       },
       {
@@ -41,44 +51,7 @@
         "_functionName": "MagIn",
         "_functionNameHash": 1258896930,
         "Enabled": true,
-        "_time": 0.6002115,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "MagHide",
-        "_functionNameHash": 798565163,
-        "Enabled": true,
-        "_time": 0.793103456,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "ReplaceSecondMag",
-        "_functionNameHash": 0,
-        "Enabled": true,
-        "_time": 0.991980731,
-        "EventConditions": []
-      }
-    ]
-  },
-  {
-    "FullName": "Hands.RELOAD PROGRESSIVE",
-    "FullNameHash": 905524990,
-    "EventsListId": 26,
-    "AnimationEvents": [
-      {
-        "Parameter": {
-          "ParamType": "None"
-        },
-        "_functionName": "UseSecondMagForReload",
-        "_functionNameHash": 0,
-        "Enabled": true,
-        "_time": 0.0,
+        "_time": 0.83838383838,
         "EventConditions": []
       }
     ]
