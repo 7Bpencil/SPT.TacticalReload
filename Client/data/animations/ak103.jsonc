@@ -4,6 +4,12 @@
   "ReloadEnd": "Assets/AK103/Content/Weapons/ak100/ak100_hands_in_half_2.anim",
   "StartToReloadTransition": 0.03041387,
   "ReloadToEndTransition": 0.1320968,
+  "CompatibleMagPairs": [
+    {
+      "Old": 0,
+      "New": 0
+    }
+  ],
   "ReloadAnimationEvents": [
     {
       "Parameter": {

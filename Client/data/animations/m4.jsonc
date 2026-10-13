@@ -4,6 +4,12 @@
   "ReloadEnd": "Assets/M4old/Content/Weapons/m4a1/m4a1_hands_in_half_2.anim",
   "StartToReloadTransition": 0.25,
   "ReloadToEndTransition": 0.25,
+  "CompatibleMagPairs": [
+    {
+      "Old": 0,
+      "New": 0
+    }
+  ],
   "ReloadAnimationEvents": [
     {
       "Parameter": {

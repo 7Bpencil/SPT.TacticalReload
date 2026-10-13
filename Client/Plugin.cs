@@ -113,7 +113,16 @@ public class ReloadAnimationDataConfig
 	public double StartToReloadTransition;
 	public double ReloadToEndTransition;
 
+	public CompatibleMagPair[] CompatibleMagPairs;
+
 	public AnimationEvent[] ReloadAnimationEvents;
+}
+
+[Serializable]
+public struct CompatibleMagPair
+{
+	public int Old;
+	public int New;
 }
 
 public class ReloadAnimationData
@@ -124,6 +133,8 @@ public class ReloadAnimationData
 
 	public double StartToReloadTransition;
 	public double ReloadToEndTransition;
+
+	public CompatibleMagPair[] CompatibleMagPairs;
 
 	public AnimationEvent[] ReloadAnimationEvents;
 }
@@ -432,6 +443,7 @@ public class Plugin : BaseUnityPlugin
 					StartToReloadTransition = animationConfig.StartToReloadTransition,
 					ReloadToEndTransition = animationConfig.ReloadToEndTransition,
 					ReloadAnimationEvents = animationConfig.ReloadAnimationEvents,
+					CompatibleMagPairs = animationConfig.CompatibleMagPairs,
 				};
 				result.Add(filename, animationData);
 			}
@@ -586,15 +598,25 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
     }
 
     [PatchPrefix]
-    public static void Prefix(ReloadExternalMagOperation __instance)
+    public static void Prefix(ReloadExternalMagOperation __instance, ReloadExternalMagResult reloadExternalMagResult)
 	{
-		// TODO here we decide if reload is tactical
-
+		// TODO we dont support quick reloads for now
+		if (reloadExternalMagResult.QuickReload)
+		{
+			return;
+		}
 		if (!Plugin.Instance.WeaponConfigs.TryGetValue(__instance.Weapon.StringTemplateId, out var weaponConfig))
 		{
 			return;
 		}
 		if (!Plugin.Instance.CustomReloadAnimations.TryGetValue(weaponConfig.AnimationName, out var animationData))
+		{
+			return;
+		}
+		if (!IsMagPairCompatible(
+			reloadExternalMagResult.OldMagazine.magAnimationIndex,
+			reloadExternalMagResult.NextMagazine.magAnimationIndex,
+			animationData.CompatibleMagPairs))
 		{
 			return;
 		}
@@ -604,6 +626,18 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 			Operation = __instance,
 			AnimationData = animationData,
 		});
+	}
+
+   	public static bool IsMagPairCompatible(int oldMag, int newMag, CompatibleMagPair[] compatiblePairs)
+	{
+		foreach (var pair in compatiblePairs)
+		{
+			if (oldMag == pair.Old && newMag == pair.New)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 }
 
