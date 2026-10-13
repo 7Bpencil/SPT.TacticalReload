@@ -113,7 +113,7 @@ public class ReloadAnimationDataConfig
 	public double StartToReloadTransition;
 	public double ReloadToEndTransition;
 
-	public List<AnimationEvent> ReloadAnimationEvents;
+	public AnimationEvent[] ReloadAnimationEvents;
 }
 
 public class ReloadAnimationData
@@ -125,7 +125,7 @@ public class ReloadAnimationData
 	public double StartToReloadTransition;
 	public double ReloadToEndTransition;
 
-	public List<AnimationEvent> ReloadAnimationEvents;
+	public AnimationEvent[] ReloadAnimationEvents;
 }
 
 [Serializable]
@@ -152,7 +152,7 @@ public record struct AnimationClipWrapper
 	AnimationClip Clip,
 	AnimationClipPlayable Playable,
 	int Index,
-	List<AnimationEvent> AnimationEvents,
+	AnimationEvent[] AnimationEvents,
 	int LastPlayedAnimationEventIndex
 );
 
@@ -355,7 +355,7 @@ public class ReloadData
 		var time = state.Playable.GetTime() / state.Clip.length;
 		var animationEvents = state.AnimationEvents;
 		var animationEventsEmitter = Operation.Controller._weaponPrefab.AnimationEventsEmitter;
-		for (var i = 0; i < animationEvents.Count; i++)
+		for (var i = 0; i < animationEvents.Length; i++)
 		{
 			var animationEvent = animationEvents[i];
 			if (time >= animationEvent.Time && i > state.LastPlayedAnimationEventIndex)
