@@ -90,12 +90,6 @@
     ]
   },
   {
-    "FullName": "Hands.RELOAD PROGRESSIVE",
-    "FullNameHash": 1208435397,
-    "EventsListId": 23,
-    "AnimationEvents": []
-  },
-  {
     "FullName": "Hands.RELOAD ADMIN",
     "FullNameHash": 700904233,
     "EventsListId": 24,
@@ -143,12 +137,13 @@
       },
       {
         "Parameter": {
-          "ParamType": "None"
+          "StringParam": "MagIn",
+          "ParamType": "String"
         },
-        "_functionName": "MagIn",
-        "_functionNameHash": 1258896930,
+        "_functionName": "Sound",
+        "_functionNameHash": 1554795451,
         "Enabled": true,
-        "_time": 0.91,
+        "_time": 0.57535696,
         "EventConditions": []
       },
       {
@@ -163,17 +158,6 @@
       },
       {
         "Parameter": {
-          "StringParam": "MagIn",
-          "ParamType": "String"
-        },
-        "_functionName": "Sound",
-        "_functionNameHash": 1554795451,
-        "Enabled": true,
-        "_time": 0.57535696,
-        "EventConditions": []
-      },
-      {
-        "Parameter": {
           "StringParam": "MagSbrosnik",
           "ParamType": "String"
         },
@@ -181,6 +165,16 @@
         "_functionNameHash": 1554795451,
         "Enabled": true,
         "_time": 0.8043363,
+        "EventConditions": []
+      },
+      {
+        "Parameter": {
+          "ParamType": "None"
+        },
+        "_functionName": "MagIn",
+        "_functionNameHash": 1258896930,
+        "Enabled": true,
+        "_time": 0.91,
         "EventConditions": []
       }
     ]
