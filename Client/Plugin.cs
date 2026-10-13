@@ -801,8 +801,8 @@ public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatc
 }
 
 #if DEBUG
-// T is a dummy class, to keep all classes separate,
-// otherwise they will share method name (because its static)
+// T is a dummy class, to keep all print debug classes separate,
+// otherwise they will share MethodName (because its static)
 public class PrintDebug<T> : ModulePatch
 {
 	private readonly Type Type;
