@@ -98,11 +98,29 @@ namespace SevenBoldPencil.TacticalReload;
 // [Warning:ModulePatch] Start
 
 [Serializable]
-public class ReloadAnimationData
+public class WeaponConfig
+{
+	public string AnimationName;
+}
+
+[Serializable]
+public class ReloadAnimationDataConfig
 {
 	public string ReloadStart;
 	public string Reload;
 	public string ReloadEnd;
+
+	public double StartToReloadTransition;
+	public double ReloadToEndTransition;
+
+	public List<AnimationEvent> ReloadAnimationEvents;
+}
+
+public class ReloadAnimationData
+{
+	public AnimationClip ReloadStart;
+	public AnimationClip Reload;
+	public AnimationClip ReloadEnd;
 
 	public double StartToReloadTransition;
 	public double ReloadToEndTransition;
@@ -138,9 +156,11 @@ public record struct AnimationClipWrapper
 	int LastPlayedAnimationEventIndex
 );
 
+// TODO we need idle -> reload start and reload end -> idle transitions
 public class ReloadData
 {
 	public ReloadExternalMagOperation Operation;
+	public ReloadAnimationData AnimationData;
 
 	public Item OldMagItem;
 	public Transform OldMagView;
@@ -150,10 +170,6 @@ public class ReloadData
 	public AnimationClipWrapper ReloadStart;
 	public AnimationClipWrapper Reload;
 	public AnimationClipWrapper ReloadEnd;
-
-	// TODO we need idle -> reload start and reload end -> idle transitions
-	public double ReloadStartToReloadTransition = 0.25;
-	public double ReloadToReloadEndTransition = 0.25;
 
 	public bool IsInit;
 	public ReloadState ReloadState;
@@ -174,18 +190,14 @@ public class ReloadData
 		Graph = PlayableGraph.Create("Tactical Reload");
 		Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
 
-		var reloadStartClip = Plugin.Instance.CustomAnimations["RELOAD PROGRESSIVE"];
-		var reloadClip = Plugin.Instance.CustomAnimations["RELOAD ADMIN"];
-		var reloadEndClip = Plugin.Instance.CustomAnimations["RELOAD END"];
-
-		var reloadStartPlayable = AnimationClipPlayable.Create(Graph, reloadStartClip);
-		var reloadPlayable = AnimationClipPlayable.Create(Graph, reloadClip);
-		var reloadEndPlayable = AnimationClipPlayable.Create(Graph, reloadEndClip);
+		var reloadStartPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadStart);
+		var reloadPlayable = AnimationClipPlayable.Create(Graph, AnimationData.Reload);
+		var reloadEndPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadEnd);
 
 		VanillaController = AnimatorControllerPlayable.Create(Graph, Animator.runtimeAnimatorController);
-		ReloadStart = new(reloadStartClip, reloadStartPlayable, 1, [], -1);
-		Reload = new(reloadClip, reloadPlayable, 2, Plugin.Instance.CustomAnimationsData["5447a9cd4bdc2dbd208b4567"][1745729803].AnimationEvents, -1);
-		ReloadEnd = new(reloadEndClip, reloadEndPlayable, 3, [], -1);
+		ReloadStart = new(AnimationData.ReloadStart, reloadStartPlayable, 1, [], -1);
+		Reload = new(AnimationData.Reload, reloadPlayable, 2, AnimationData.ReloadAnimationEvents, -1);
+		ReloadEnd = new(AnimationData.ReloadEnd, reloadEndPlayable, 3, [], -1);
 
 		Mixer = AnimationMixerPlayable.Create(Graph, 4);
 
@@ -229,7 +241,7 @@ public class ReloadData
         {
             case ReloadState.Start:
 			{
-				if (PlayState(ref ReloadStart, ref Reload, ReloadStartToReloadTransition))
+				if (PlayState(ref ReloadStart, ref Reload, AnimationData.StartToReloadTransition))
 				{
 					ReloadState = ReloadState.StartToReload;
 				}
@@ -237,7 +249,7 @@ public class ReloadData
 			}
             case ReloadState.StartToReload:
 			{
-				if (PlayStateTransition(ref ReloadStart, ref Reload, ReloadStartToReloadTransition))
+				if (PlayStateTransition(ref ReloadStart, ref Reload, AnimationData.StartToReloadTransition))
 				{
 					ReloadState = ReloadState.Reload;
 				}
@@ -245,7 +257,7 @@ public class ReloadData
 			}
             case ReloadState.Reload:
 			{
-				if (PlayState(ref Reload, ref ReloadEnd, ReloadToReloadEndTransition))
+				if (PlayState(ref Reload, ref ReloadEnd, AnimationData.ReloadToEndTransition))
 				{
 					ReloadState = ReloadState.ReloadToEnd;
 				}
@@ -253,7 +265,7 @@ public class ReloadData
 			}
             case ReloadState.ReloadToEnd:
 			{
-				if (PlayStateTransition(ref Reload, ref ReloadEnd, ReloadToReloadEndTransition))
+				if (PlayStateTransition(ref Reload, ref ReloadEnd, AnimationData.ReloadToEndTransition))
 				{
 					ReloadState = ReloadState.End;
 				}
@@ -349,6 +361,7 @@ public class ReloadData
 			if (time >= animationEvent.Time && i > state.LastPlayedAnimationEventIndex)
 			{
 				// Plugin.Instance.LoggerInstance.LogWarning($"Fire Event: {animationEvent.FunctionName}");
+
 				state.LastPlayedAnimationEventIndex = i;
 				animationEventsEmitter.SendEvent(animationEvent.FunctionName, animationEvent.FunctionNameHash, animationEvent.Parameter, 0);
 			}
@@ -363,8 +376,8 @@ public class Plugin : BaseUnityPlugin
 
 	public ManualLogSource LoggerInstance;
 
-	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> CustomAnimationsData;
-	public Dictionary<string, AnimationClip> CustomAnimations;
+	public Dictionary<string, ReloadAnimationData> CustomReloadAnimations;
+	public Dictionary<string, WeaponConfig> WeaponConfigs;
 	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
 
     private void Awake()
@@ -391,54 +404,54 @@ public class Plugin : BaseUnityPlugin
 		new PrintDebug<ulong>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
 
         var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-		CustomAnimationsData = LoadCustomAnimationsData(assemblyDir);
+		CustomReloadAnimations = LoadCustomReloadAnimations(assemblyDir);
+		WeaponConfigs = LoadWeaponConfigs(assemblyDir);
 		Reloads = new();
-
-		var bundlePath = Path.Combine(assemblyDir, "data", "animations", "m4_tactical_reload.bundle");
-		var bundle = AssetBundle.LoadFromFile(bundlePath);
-		CustomAnimations = new();
-		CustomAnimations["RELOAD PROGRESSIVE"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_hands_out.anim");
-		CustomAnimations["RELOAD ADMIN"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_reload_admin.anim");
-		CustomAnimations["RELOAD END"] = bundle.LoadAsset<AnimationClip>("Assets/M4old/Content/Weapons/m4a1/m4a1_hands_in_half_2.anim");
 	}
 
-	public Dictionary<string, Dictionary<int, AnimationBehaviourData>> LoadCustomAnimationsData(string assemblyDir)
+	public Dictionary<string, ReloadAnimationData> LoadCustomReloadAnimations(string assemblyDir)
 	{
-        var configPath = Path.Combine(assemblyDir, "data", "config.jsonc");
-        if (!SafeIO.ReadAllText(configPath).Ok(out var configJson, out var _))
-        {
-			return [];
-		}
-
-		var animationEventsPath = Path.Combine(assemblyDir, "data", "animation-events");
-		var animationEventPaths = SafeIO.GetFiles(animationEventsPath, "*.jsonc", SearchOption.AllDirectories);
-		var resultEvents = new Dictionary<string, Dictionary<int, AnimationBehaviourData>>(animationEventPaths.Length);
-		foreach (var animationEventPath in animationEventPaths)
+		var animationsPath = Path.Combine(assemblyDir, "data", "animations");
+		var animationConfigPaths = SafeIO.GetFiles(animationsPath, "*.jsonc");
+		var result = new Dictionary<string, ReloadAnimationData>(animationConfigPaths.Length);
+		foreach (var animationConfigPath in animationConfigPaths)
 		{
-			if (SafeIO.ReadAllText(animationEventPath).Ok(out var animationEventJson, out var _))
+			if (SafeIO.ReadAllText(animationConfigPath).Ok(out var animationConfigJson, out var _))
 			{
-				var animationEventData = JsonConvert.DeserializeObject<List<AnimationBehaviourData>>(animationEventJson);
-				var animationEventDataDict = new Dictionary<int, AnimationBehaviourData>(animationEventData.Count);
-				foreach (var data in animationEventData)
+				var animationConfig = JsonConvert.DeserializeObject<ReloadAnimationDataConfig>(animationConfigJson);
+				var filename = Path.GetFileNameWithoutExtension(animationConfigPath);
+				var bundlePath = Path.Combine(assemblyDir, "data", "animations", $"{filename}.bundle");
+				var bundle = AssetBundle.LoadFromFile(bundlePath);
+				var animationData = new ReloadAnimationData()
 				{
-					animationEventDataDict[data.FullNameHash] = data;
-				}
-
-				var filename = Path.GetFileNameWithoutExtension(animationEventPath);
-				resultEvents.Add(filename, animationEventDataDict);
+					ReloadStart = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadStart),
+					Reload = bundle.LoadAsset<AnimationClip>(animationConfig.Reload),
+					ReloadEnd = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadEnd),
+					StartToReloadTransition = animationConfig.StartToReloadTransition,
+					ReloadToEndTransition = animationConfig.ReloadToEndTransition,
+					ReloadAnimationEvents = animationConfig.ReloadAnimationEvents,
+				};
+				result.Add(filename, animationData);
 			}
 		}
 
-		var config = JsonConvert.DeserializeObject<Dictionary<string, string>>(configJson);
-		var result = new Dictionary<string, Dictionary<int, AnimationBehaviourData>>(config.Count);
-		foreach (var (template, animationName) in config)
+		return result;
+	}
+
+	public Dictionary<string, WeaponConfig> LoadWeaponConfigs(string assemblyDir)
+	{
+		var weaponsPath = Path.Combine(assemblyDir, "data", "weapons");
+		var weaponsConfigPaths = SafeIO.GetFiles(weaponsPath, "*.jsonc");
+		var result = new Dictionary<string, WeaponConfig>(weaponsConfigPaths.Length);
+		foreach (var weaponConfigPath in weaponsConfigPaths)
 		{
-			if (resultEvents.TryGetValue(animationName, out var animations))
+			if (SafeIO.ReadAllText(weaponConfigPath).Ok(out var weaponConfigJson, out var _))
 			{
-				result.Add(template, animations);
+				var weaponConfig = JsonConvert.DeserializeObject<WeaponConfig>(weaponConfigJson);
+				var templateId = Path.GetFileNameWithoutExtension(weaponConfigPath);
+				result.Add(templateId, weaponConfig);
 			}
 		}
-
 		return result;
 	}
 
@@ -573,14 +586,19 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 	{
 		// TODO here we decide if reload is tactical
 
-		// if (!Plugin.Instance.CustomAnimationsData.ContainsKey(__instance.Weapon.StringTemplateId))
-		// {
-		// 	return;
-		// }
+		if (!Plugin.Instance.WeaponConfigs.TryGetValue(__instance.Weapon.StringTemplateId, out var weaponConfig))
+		{
+			return;
+		}
+		if (!Plugin.Instance.CustomReloadAnimations.TryGetValue(weaponConfig.AnimationName, out var animationData))
+		{
+			return;
+		}
 
 		Plugin.Instance.Reloads.Add(__instance.FirearmsAnimator, new()
 		{
 			Operation = __instance,
+			AnimationData = animationData,
 		});
 	}
 }
