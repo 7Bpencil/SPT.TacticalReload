@@ -395,6 +395,7 @@ public class Plugin : BaseUnityPlugin
 		new Patch_ReloadExternalMagOperation_UseSecondMagForReload().Enable();
 		new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon().Enable();
 
+#if DEBUG
 		new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)).Enable();
 		new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]).Enable();
 		new PrintDebug<ushort>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)).Enable();
@@ -402,6 +403,7 @@ public class Plugin : BaseUnityPlugin
 		new PrintDebug<uint>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)).Enable();
 		new PrintDebug<long>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)).Enable();
 		new PrintDebug<ulong>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
+#endif
 
         var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 		CustomReloadAnimations = LoadCustomReloadAnimations(assemblyDir);
@@ -463,6 +465,7 @@ public class Plugin : BaseUnityPlugin
 		}
 	}
 
+#if DEBUG
 	public void DumpAnimationData(WeaponPrefab weaponPrefab)
 	{
 		var result = new List<AnimationBehaviourData>();
@@ -492,6 +495,7 @@ public class Plugin : BaseUnityPlugin
         var filePath = "animation-events.jsonc";
         SafeIO.WriteAllTextAsync(filePath, json);
 	}
+#endif
 
 	public void AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
 	{
@@ -762,6 +766,7 @@ public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatc
 	}
 }
 
+#if DEBUG
 // T is a dummy class, to keep all classes separate,
 // otherwise they will share method name (because its static)
 public class PrintDebug<T> : ModulePatch
@@ -788,3 +793,4 @@ public class PrintDebug<T> : ModulePatch
 		Logger.LogWarning(MethodName);
 	}
 }
+#endif
