@@ -5,7 +5,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Nullable>disable</Nullable>
-    <OutPath>$(SPTPath)\BepInEx\plugins\7Bpencil.TacticalReload</OutPath>
+    <OutPath>$(SPTPath)\BepInEx\scripts\7Bpencil.TacticalReload</OutPath>
     <StagePath>..\Stage\BepInEx\plugins\7Bpencil.TacticalReload</StagePath>
     <AssemblySearchPaths>
       $(AssemblySearchPaths);
@@ -44,15 +44,11 @@
     <Reference Include="UnityEngine.VideoModule" />
   </ItemGroup>
 
-  <Target Name="CopyToSPT" AfterTargets="AfterBuild">
-    <Exec Command="mkdir &quot;$(OutPath)&quot;" ContinueOnError="true" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(OutPath)" />
+  <Target Name="CopyBundlesToSPT" AfterTargets="AfterBuild">
     <Exec Command="xcopy /hievry &quot;$(ProjectDir)data&quot; &quot;$(OutPath)/data&quot;" />
   </Target>
 
-  <Target Name="CopyToStage" AfterTargets="AfterBuild" Condition="'$(Configuration)'=='Release'">
-    <Exec Command="mkdir &quot;$(StagePath)&quot;" ContinueOnError="true" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(StagePath)" />
+  <Target Name="CopyBundlesToStage" AfterTargets="AfterBuild" Condition="'$(Configuration)'=='Release'">
     <Exec Command="xcopy /hievry &quot;$(ProjectDir)data&quot; &quot;$(StagePath)/data&quot;" />
   </Target>
 

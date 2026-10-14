@@ -127,6 +127,7 @@ public struct CompatibleMagPair
 
 public class ReloadAnimationData
 {
+	public AssetBundle Bundle;
 	public AnimationClip ReloadStart;
 	public AnimationClip Reload;
 	public AnimationClip ReloadEnd;
@@ -387,6 +388,8 @@ public class Plugin : BaseUnityPlugin
 
 	public ManualLogSource LoggerInstance;
 
+	public List<ModulePatch> Patches;
+
 	public Dictionary<string, ReloadAnimationData> CustomReloadAnimations;
 	public Dictionary<string, WeaponConfig> WeaponConfigs;
 	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
@@ -397,29 +400,62 @@ public class Plugin : BaseUnityPlugin
 
 		LoggerInstance = Logger;
 
-		new Patch_WeaponPrefab_InitHotObjects().Enable();
-		new Patch_ReloadExternalMagOperation_Reset().Enable();
-		new Patch_ReloadExternalMagOperation_Start().Enable();
-		new Patch_FirearmsAnimator_Reload().Enable();
-		new Patch_ReloadExternalMagOperation_OnMagPuttedToRig().Enable();
-		new Patch_ReloadExternalMagOperation_OnMagAppeared().Enable();
-		new Patch_ReloadExternalMagOperation_UseSecondMagForReload().Enable();
-		new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon().Enable();
+		Patches = new();
+
+		RegisterPatch(new Patch_WeaponPrefab_InitHotObjects());
+		RegisterPatch(new Patch_ReloadExternalMagOperation_Reset());
+		RegisterPatch(new Patch_ReloadExternalMagOperation_Start());
+		RegisterPatch(new Patch_FirearmsAnimator_Reload());
+		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagPuttedToRig());
+		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagAppeared());
+		RegisterPatch(new Patch_ReloadExternalMagOperation_UseSecondMagForReload());
+		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon());
 
 #if DEBUG
-		new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)).Enable();
-		new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]).Enable();
-		new PrintDebug<ushort>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)).Enable();
-		new PrintDebug<int>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)).Enable();
-		new PrintDebug<uint>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)).Enable();
-		new PrintDebug<long>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)).Enable();
-		new PrintDebug<ulong>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
+		RegisterPatch(new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)));
+		RegisterPatch(new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]));
+		RegisterPatch(new PrintDebug<ushort>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)));
+		RegisterPatch(new PrintDebug<int>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)));
+		RegisterPatch(new PrintDebug<uint>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)));
+		RegisterPatch(new PrintDebug<long>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)));
+		RegisterPatch(new PrintDebug<ulong>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)));
 #endif
 
-        var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+		var assemblyPath = Assembly.GetExecutingAssembly().Location;
+		if (string.IsNullOrWhiteSpace(assemblyPath))
+		{
+			// happens for plugins loaded from scripts folder by BepInEx.ScriptEngine
+			assemblyPath = Path.Combine(BepInEx.Paths.BepInExRootPath, "scripts", "7Bpencil.TacticalReload", "7Bpencil.TacticalReload.dll");
+		}
+
+        var assemblyDir = Path.GetDirectoryName(assemblyPath);
 		CustomReloadAnimations = LoadCustomReloadAnimations(assemblyDir);
 		WeaponConfigs = LoadWeaponConfigs(assemblyDir);
 		Reloads = new();
+	}
+
+	public void RegisterPatch(ModulePatch patch)
+	{
+		patch.Enable();
+		Patches.Add(patch);
+	}
+
+	private void OnDestroy()
+	{
+		foreach (var patch in Patches)
+		{
+			patch.Disable();
+		}
+		Patches.Clear();
+
+		foreach (var animationData in CustomReloadAnimations.Values)
+		{
+			animationData.Bundle.Unload(true);
+		}
+		CustomReloadAnimations.Clear();
+
+		WeaponConfigs.Clear();
+		Reloads.Clear();
 	}
 
 	public Dictionary<string, ReloadAnimationData> LoadCustomReloadAnimations(string assemblyDir)
@@ -437,6 +473,7 @@ public class Plugin : BaseUnityPlugin
 				var bundle = AssetBundle.LoadFromFile(bundlePath);
 				var animationData = new ReloadAnimationData()
 				{
+					Bundle = bundle,
 					ReloadStart = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadStart),
 					Reload = bundle.LoadAsset<AnimationClip>(animationConfig.Reload),
 					ReloadEnd = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadEnd),
