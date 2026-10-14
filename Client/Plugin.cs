@@ -114,7 +114,7 @@ public class ReloadAnimationDataConfig
 	public double ReloadToEndTransition;
 
 	public CompatibleMagPair[] CompatibleMagPairs;
-
+	public string[] AnimatedBones;
 	public AnimationEvent[] ReloadAnimationEvents;
 }
 
@@ -136,7 +136,7 @@ public class ReloadAnimationData
 	public double ReloadToEndTransition;
 
 	public CompatibleMagPair[] CompatibleMagPairs;
-
+	public string[] AnimatedBones;
 	public AnimationEvent[] ReloadAnimationEvents;
 }
 
@@ -479,8 +479,9 @@ public class Plugin : BaseUnityPlugin
 					ReloadEnd = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadEnd),
 					StartToReloadTransition = animationConfig.StartToReloadTransition,
 					ReloadToEndTransition = animationConfig.ReloadToEndTransition,
-					ReloadAnimationEvents = animationConfig.ReloadAnimationEvents,
 					CompatibleMagPairs = animationConfig.CompatibleMagPairs,
+					AnimatedBones = animationConfig.AnimatedBones,
+					ReloadAnimationEvents = animationConfig.ReloadAnimationEvents,
 				};
 				result.Add(filename, animationData);
 			}
