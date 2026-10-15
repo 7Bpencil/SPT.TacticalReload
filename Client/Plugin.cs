@@ -400,7 +400,6 @@ public class Plugin : BaseUnityPlugin
 
 		Patches = new();
 
-		RegisterPatch(new Patch_WeaponPrefab_InitHotObjects());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Reset());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Start());
 		RegisterPatch(new Patch_FirearmsAnimator_Reload());
@@ -563,58 +562,6 @@ public class Plugin : BaseUnityPlugin
 		{
 			Logger.LogError($"Reload operations not equal!");
 		}
-	}
-}
-
-public class Patch_WeaponPrefab_InitHotObjects : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(WeaponPrefab), nameof(WeaponPrefab.InitHotObjects));
-    }
-
-    [PatchPostfix]
-    public static void Postfix(WeaponPrefab __instance, Weapon ____weaponData)
-	{
-		// old but reliable way of tracking weapon spawn
-		if (____weaponData == null)
-		{
-			return;
-		}
-		// AnimationEventsEmitter is null on item preview screen
-		if (__instance.AnimationEventsEmitter == null)
-		{
-			return;
-		}
-		// if (!Plugin.Instance.CustomAnimationsData.TryGetValue(____weaponData.StringTemplateId, out var customAnimationsData))
-		// {
-		// 	return;
-		// }
-		// // replace tactical animations events data with ones designed to work with our system
-		// foreach (var ieventBehaviour in __instance.AnimationEventsEmitter._animationEventsStateBehaviours)
-		// {
-		// 	if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
-		// 	{
-		// 		continue;
-		// 	}
-		// 	if (!customAnimationsData.TryGetValue(eventBehaviour.FullNameHash, out var customData))
-		// 	{
-		// 		continue;
-		// 	}
-		// 	eventBehaviour.EventsData._stateHashToEventsCollection[eventBehaviour.EventsListId]._animationEvents = customData.AnimationEvents;
-		// }
-
-
-		// if (__instance.Animator is UnityAnimatorWrapper animatorWrapper)
-		// {
-	 //        var animatorOverrideController = new AnimatorOverrideController(animatorWrapper.runtimeAnimatorController);
-	 //        animatorWrapper.runtimeAnimatorController = animatorOverrideController;
-		// 	__instance._originalAnimatorController = animatorOverrideController;
-		// 	foreach (var (originalClipName, overrideClip) in Plugin.Instance.CustomAnimations)
-		// 	{
-		// 		animatorOverrideController[originalClipName] = overrideClip;
-		// 	}
-		// }
 	}
 }
 
