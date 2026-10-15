@@ -57,46 +57,6 @@ using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
 namespace SevenBoldPencil.TacticalReload;
 
-// event names
-// 1551431816 MagShow -> OnMagAppeared
-// 798565163  MagHide -> OnMagPuttedToRig
-// 1258896930 MagIn   -> OnMagInsertedToWeapon
-// 1947938901 MagOut  -> OnMagPulledOutFromWeapon
-// PutMagToRig -> Unused
-// 443236115 ReplaceSecondMag -> Unused
-// 67499002  UseSecondMagForReload -> UseSecondMagForReload/SwitchToReloadWithNewMag
-
-// original:
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon -> MagOut
-// [Warning:ModulePatch] OnMagPuttedToRig -> MagHide
-// [Warning:ModulePatch] OnMagAppeared -> MagShow
-// [Warning:ModulePatch] OnMagInsertedToWeapon -> MagIn
-// [Warning:ModulePatch] Start
-
-// new
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon
-// [Warning:ModulePatch] OnMagPuttedToRig
-// [Warning:ModulePatch] OnMagAppeared
-// [Warning:ModulePatch] UseSecondMagForReload
-// [Warning:ModulePatch] Start
-
-// hit
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagAppeared
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon
-// [Warning:ModulePatch] OnMagInsertedToWeapon
-// [Warning:ModulePatch] Start
-
-// admin
-// [Warning:ModulePatch] Start
-// [Warning:ModulePatch] OnMagAppeared
-// [Warning:ModulePatch] OnMagPulledOutFromWeapon
-// [Warning:ModulePatch] OnMagInsertedToWeapon
-// [Warning:ModulePatch] OnMagPuttedToRig
-// [Warning:ModulePatch] Start
-
 [Serializable]
 public class WeaponConfig
 {
@@ -154,7 +114,6 @@ public enum ReloadState
 	StartToReload,
 	Reload,
 	ReloadToEnd,
-	End,
 }
 
 public record struct AnimationClipWrapper
@@ -166,7 +125,6 @@ public record struct AnimationClipWrapper
 	int LastPlayedAnimationEventIndex
 );
 
-// TODO we need idle -> reload start and reload end -> idle transitions
 public class ReloadData
 {
 	public ReloadExternalMagOperation Operation;
@@ -179,30 +137,24 @@ public class ReloadData
 
 	public AnimationClipWrapper ReloadStart;
 	public AnimationClipWrapper Reload;
-	public AnimationClipWrapper ReloadEnd;
 
-	public bool IsInit;
 	public ReloadState ReloadState;
 
-    public Animator Animator;
+	public UnityAnimatorWrapper AnimatorWrapper;
     public PlayableGraph Graph;
     public AnimationPlayableOutput Output;
-    public Playable OriginalAnimatorPlayable;
     public AnimationLayerMixerPlayable MixerTop;
     public AnimationMixerPlayable MixerReload;
 
-	public void Init(Animator animator)
+	public void Init(UnityAnimatorWrapper animatorWrapper)
 	{
-		if (IsInit)
-		{
-			return;
-		}
+		ReloadState = ReloadState.Original;
 
-		Animator = animator;
+		AnimatorWrapper = animatorWrapper;
 		Graph = PlayableGraph.Create();
-		Output = AnimationPlayableOutput.Create(Graph, "main", Animator);
-		OriginalAnimatorPlayable = Animator.playableGraph.GetOutputByType<AnimationPlayableOutput>(0).GetSourcePlayable();
+		Output = AnimationPlayableOutput.Create(Graph, "main", AnimatorWrapper.Animator);
 
+		var originalAnimatorPlayable = AnimatorWrapper.Animator.playableGraph.GetOutputByType<AnimationPlayableOutput>(0).GetSourcePlayable();
 		var reloadStartPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadStart);
 		var reloadPlayable = AnimationClipPlayable.Create(Graph, AnimationData.Reload);
 
@@ -214,15 +166,12 @@ public class ReloadData
 		MixerReload.ConnectInput(Reload.Index, Reload.Playable, 0);
 
 		MixerTop = AnimationLayerMixerPlayable.Create(Graph, 2, false);
-		MixerTop.ConnectInput(0, OriginalAnimatorPlayable, 0, 1);
+		MixerTop.ConnectInput(0, originalAnimatorPlayable, 0, 1);
 		MixerTop.ConnectInput(1, MixerReload, 0, 0);
 		MixerTop.SetLayerMaskFromAvatarMask(1, AnimationData.AnimatedBones);
 
 		Output.SetSourcePlayable(MixerTop);
 		Graph.Play();
-
-		IsInit = true;
-		ReloadState = ReloadState.Original;
 	}
 
 	public void StartReload()
@@ -236,15 +185,12 @@ public class ReloadData
 
 	public void Update()
 	{
-		if (!IsInit)
-		{
-			return;
-		}
-
         switch (ReloadState)
         {
             case ReloadState.Start:
 			{
+				// TODO original reload doesnt have any transition to reload start,
+				// so we dont have too, but maybe we should?
 				if (PlayState(ref ReloadStart, ref Reload, AnimationData.StartToReloadTransition))
 				{
 					ReloadState = ReloadState.StartToReload;
@@ -261,40 +207,37 @@ public class ReloadData
 			}
             case ReloadState.Reload:
 			{
-				if (PlayState(ref Reload, ref ReloadEnd, AnimationData.ReloadToEndTransition))
+				if (PlayStateUntilEnd(ref Reload, AnimationData.ReloadToEndTransition))
 				{
 					ReloadState = ReloadState.ReloadToEnd;
+
+					// TODO this is AK only, we need generic system to set
+					// states, transition time for them, and parameter requirements
+
+					var layerIndex = AnimatorWrapper.GetLayerIndex("Hands");
+					var ammoInChamber = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINCHAMBER);
+					var ammoInMag = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINMAG);
+					if (ammoInChamber == 0 && ammoInMag > 0)
+					{
+						AnimatorWrapper.Play("RELOAD CHARGE END", layerIndex, 0f);
+					}
+					else
+					{
+						AnimatorWrapper.Play("RELOAD END", layerIndex, 0f);
+					}
 				}
                 break;
 			}
             case ReloadState.ReloadToEnd:
 			{
-				if (PlayStateTransition(ref Reload, ref ReloadEnd, AnimationData.ReloadToEndTransition))
+				if (PlayTransitionToEnd(ref Reload, AnimationData.ReloadToEndTransition))
 				{
-					ReloadState = ReloadState.End;
-				}
-                break;
-			}
-            case ReloadState.End:
-			{
-				var reloadEndTime = ReloadEnd.Playable.GetTime();
-				var reloadEndDuration = ReloadEnd.Clip.length;
-
-		        if (reloadEndTime >= reloadEndDuration)
-		        {
 					ReloadState = ReloadState.Original;
-
-					// Mixer.SetInputWeight(0, 0);
-					// Mixer.SetInputWeight(1, 0);
-					// Mixer.SetInputWeight(2, 0);
-					// Mixer.SetInputWeight(3, 0);
 
 			        Graph.Stop();
 					Output.SetSourcePlayable(Playable.Null);
 			        Graph.Destroy();
-
-					// TODO force IDLE state?
-		        }
+				}
                 break;
 			}
         }
@@ -335,6 +278,45 @@ public class ReloadData
 
 		TryFireAnimationEvents(ref fromState);
 		TryFireAnimationEvents(ref toState);
+
+		if (toTime >= transitionDuration)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	public bool PlayStateUntilEnd(ref AnimationClipWrapper fromState, double transitionDuration)
+	{
+		var fromTime = fromState.Playable.GetTime();
+		var fromDuration = fromState.Clip.length;
+		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
+
+		// Plugin.Instance.LoggerInstance.LogWarning($"PlayState          : {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
+
+		TryFireAnimationEvents(ref fromState);
+
+		if (toTime >= 0)
+		{
+	        MixerReload.SetInputWeight(fromState.Index, fromWeight);
+			return true;
+		}
+
+		return false;
+	}
+
+	public bool PlayTransitionToEnd(ref AnimationClipWrapper fromState, double transitionDuration)
+	{
+		var fromTime = fromState.Playable.GetTime();
+		var fromDuration = fromState.Clip.length;
+		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
+
+		// Plugin.Instance.LoggerInstance.LogWarning($"PlayStateTransition: {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
+
+        MixerReload.SetInputWeight(fromState.Index, fromWeight);
+
+		TryFireAnimationEvents(ref fromState);
 
 		if (toTime >= transitionDuration)
 		{
@@ -659,7 +641,7 @@ public class Patch_FirearmsAnimator_Reload : ModulePatch
 				// animatorWrapper.Play("RELOAD PROGRESSIVE", layerIndex, 0);
 
 				// TODO reuse playable graph
-				reload.Init(animatorWrapper.Animator);
+				reload.Init(animatorWrapper);
 				reload.StartReload();
 			}
 
