@@ -136,7 +136,7 @@ public class ReloadAnimationData
 	public double ReloadToEndTransition;
 
 	public CompatibleMagPair[] CompatibleMagPairs;
-	public string[] AnimatedBones;
+	public AvatarMask AnimatedBones;
 	public AnimationEvent[] ReloadAnimationEvents;
 }
 
@@ -185,11 +185,13 @@ public class ReloadData
 
 	public bool IsInit;
 	public ReloadState ReloadState;
+
     public Animator Animator;
     public PlayableGraph Graph;
-    public AnimatorControllerPlayable VanillaController;
-    public AnimationMixerPlayable Mixer;
     public AnimationPlayableOutput Output;
+    public Playable OriginalAnimatorPlayable;
+    public AnimationLayerMixerPlayable MixerTop;
+    public AnimationMixerPlayable MixerReload;
 
 	public void Init(Animator animator)
 	{
@@ -199,32 +201,29 @@ public class ReloadData
 		}
 
 		Animator = animator;
-		Graph = PlayableGraph.Create("Tactical Reload");
-		Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
+		Graph = PlayableGraph.Create();
+		Output = AnimationPlayableOutput.Create(Graph, "main", Animator);
+		OriginalAnimatorPlayable = Animator.playableGraph.GetOutputByType<AnimationPlayableOutput>(0).GetSourcePlayable();
 
 		var reloadStartPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadStart);
 		var reloadPlayable = AnimationClipPlayable.Create(Graph, AnimationData.Reload);
 		var reloadEndPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadEnd);
 
-		VanillaController = AnimatorControllerPlayable.Create(Graph, Animator.runtimeAnimatorController);
-		ReloadStart = new(AnimationData.ReloadStart, reloadStartPlayable, 1, [], -1);
-		Reload = new(AnimationData.Reload, reloadPlayable, 2, AnimationData.ReloadAnimationEvents, -1);
-		ReloadEnd = new(AnimationData.ReloadEnd, reloadEndPlayable, 3, [], -1);
+		ReloadStart = new(AnimationData.ReloadStart, reloadStartPlayable, 0, [], -1);
+		Reload = new(AnimationData.Reload, reloadPlayable, 1, AnimationData.ReloadAnimationEvents, -1);
+		ReloadEnd = new(AnimationData.ReloadEnd, reloadEndPlayable, 2, [], -1);
 
-		Mixer = AnimationMixerPlayable.Create(Graph, 4);
+		MixerReload = AnimationMixerPlayable.Create(Graph, 3);
+		MixerReload.ConnectInput(ReloadStart.Index, ReloadStart.Playable, 0);
+		MixerReload.ConnectInput(Reload.Index, Reload.Playable, 0);
+		MixerReload.ConnectInput(ReloadEnd.Index, ReloadEnd.Playable, 0);
 
-		Mixer.ConnectInput(0, VanillaController, 0);
-		Mixer.ConnectInput(ReloadStart.Index, ReloadStart.Playable, 0);
-		Mixer.ConnectInput(Reload.Index, Reload.Playable, 0);
-		Mixer.ConnectInput(ReloadEnd.Index, ReloadEnd.Playable, 0);
+		MixerTop = AnimationLayerMixerPlayable.Create(Graph, 2, false);
+		MixerTop.ConnectInput(0, OriginalAnimatorPlayable, 0, 1);
+		MixerTop.ConnectInput(1, MixerReload, 0, 0);
+		MixerTop.SetLayerMaskFromAvatarMask(1, AnimationData.AnimatedBones);
 
-		Mixer.SetInputWeight(0, 1);
-		Mixer.SetInputWeight(ReloadStart.Index, 0);
-		Mixer.SetInputWeight(Reload.Index, 0);
-		Mixer.SetInputWeight(ReloadEnd.Index, 0);
-
-		Output = AnimationPlayableOutput.Create(Graph, "Tactical Reload Output", Animator);
-		Output.SetSourcePlayable(Mixer);
+		Output.SetSourcePlayable(MixerTop);
 		Graph.Play();
 
 		IsInit = true;
@@ -234,11 +233,9 @@ public class ReloadData
 	public void StartReload()
 	{
 		ReloadState = ReloadState.Start;
-        ReloadStart.Playable.SetTime(0);
-        Mixer.SetInputWeight(0, 0);
-        Mixer.SetInputWeight(ReloadStart.Index, 1);
-        Mixer.SetInputWeight(Reload.Index, 0);
-        Mixer.SetInputWeight(ReloadEnd.Index, 0);
+		ReloadStart.Playable.SetTime(0);
+		MixerTop.SetInputWeight(1, 1);
+        MixerReload.SetInputWeight(ReloadStart.Index, 1);
 		TryFireAnimationEvents(ref ReloadStart);
 	}
 
@@ -292,13 +289,14 @@ public class ReloadData
 		        {
 					ReloadState = ReloadState.Original;
 
-					Mixer.SetInputWeight(0, 0);
-					Mixer.SetInputWeight(1, 0);
-					Mixer.SetInputWeight(2, 0);
-					Mixer.SetInputWeight(3, 0);
+					// Mixer.SetInputWeight(0, 0);
+					// Mixer.SetInputWeight(1, 0);
+					// Mixer.SetInputWeight(2, 0);
+					// Mixer.SetInputWeight(3, 0);
 
 			        Graph.Stop();
 					Output.SetSourcePlayable(Playable.Null);
+			        Graph.Destroy();
 
 					// TODO force IDLE state?
 		        }
@@ -319,8 +317,8 @@ public class ReloadData
 
 		if (toTime >= 0)
 		{
-	        Mixer.SetInputWeight(fromState.Index, fromWeight);
-	        Mixer.SetInputWeight(toState.Index, toWeight);
+	        MixerReload.SetInputWeight(fromState.Index, fromWeight);
+	        MixerReload.SetInputWeight(toState.Index, toWeight);
 	        toState.Playable.SetTime(toTime);
 			TryFireAnimationEvents(ref toState);
 			return true;
@@ -337,8 +335,8 @@ public class ReloadData
 
 		// Plugin.Instance.LoggerInstance.LogWarning($"PlayStateTransition: {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
 
-        Mixer.SetInputWeight(fromState.Index, fromWeight);
-        Mixer.SetInputWeight(toState.Index, toWeight);
+        MixerReload.SetInputWeight(fromState.Index, fromWeight);
+        MixerReload.SetInputWeight(toState.Index, toWeight);
 
 		TryFireAnimationEvents(ref fromState);
 		TryFireAnimationEvents(ref toState);
@@ -480,7 +478,7 @@ public class Plugin : BaseUnityPlugin
 					StartToReloadTransition = animationConfig.StartToReloadTransition,
 					ReloadToEndTransition = animationConfig.ReloadToEndTransition,
 					CompatibleMagPairs = animationConfig.CompatibleMagPairs,
-					AnimatedBones = animationConfig.AnimatedBones,
+					AnimatedBones = CreateMask(animationConfig.AnimatedBones),
 					ReloadAnimationEvents = animationConfig.ReloadAnimationEvents,
 				};
 				result.Add(filename, animationData);
@@ -489,6 +487,18 @@ public class Plugin : BaseUnityPlugin
 
 		return result;
 	}
+
+	public static AvatarMask CreateMask(string[] bones)
+    {
+        var mask = new AvatarMask();
+		mask.transformCount = bones.Length;
+		for (var i = 0; i < bones.Length; i++)
+		{
+			mask.SetTransformPath(i, bones[i]);
+			mask.SetTransformActive(i, true);
+		}
+        return mask;
+    }
 
 	public Dictionary<string, WeaponConfig> LoadWeaponConfigs(string assemblyDir)
 	{
