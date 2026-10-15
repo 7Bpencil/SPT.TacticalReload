@@ -595,6 +595,11 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
     [PatchPrefix]
     public static void Prefix(ReloadExternalMagOperation __instance, ReloadExternalMagResult reloadExternalMagResult)
 	{
+		// cannot tactical reload when theres no mag in weapon
+		if (reloadExternalMagResult.OldMagazine == null)
+		{
+			return;
+		}
 		// TODO we dont support quick reloads for now
 		if (reloadExternalMagResult.QuickReload)
 		{
