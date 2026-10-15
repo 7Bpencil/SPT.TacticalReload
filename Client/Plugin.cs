@@ -108,7 +108,6 @@ public class ReloadAnimationDataConfig
 {
 	public string ReloadStart;
 	public string Reload;
-	public string ReloadEnd;
 
 	public double StartToReloadTransition;
 	public double ReloadToEndTransition;
@@ -130,7 +129,6 @@ public class ReloadAnimationData
 	public AssetBundle Bundle;
 	public AnimationClip ReloadStart;
 	public AnimationClip Reload;
-	public AnimationClip ReloadEnd;
 
 	public double StartToReloadTransition;
 	public double ReloadToEndTransition;
@@ -207,16 +205,13 @@ public class ReloadData
 
 		var reloadStartPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadStart);
 		var reloadPlayable = AnimationClipPlayable.Create(Graph, AnimationData.Reload);
-		var reloadEndPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadEnd);
 
 		ReloadStart = new(AnimationData.ReloadStart, reloadStartPlayable, 0, [], -1);
 		Reload = new(AnimationData.Reload, reloadPlayable, 1, AnimationData.ReloadAnimationEvents, -1);
-		ReloadEnd = new(AnimationData.ReloadEnd, reloadEndPlayable, 2, [], -1);
 
-		MixerReload = AnimationMixerPlayable.Create(Graph, 3);
+		MixerReload = AnimationMixerPlayable.Create(Graph, 2);
 		MixerReload.ConnectInput(ReloadStart.Index, ReloadStart.Playable, 0);
 		MixerReload.ConnectInput(Reload.Index, Reload.Playable, 0);
-		MixerReload.ConnectInput(ReloadEnd.Index, ReloadEnd.Playable, 0);
 
 		MixerTop = AnimationLayerMixerPlayable.Create(Graph, 2, false);
 		MixerTop.ConnectInput(0, OriginalAnimatorPlayable, 0, 1);
@@ -473,7 +468,6 @@ public class Plugin : BaseUnityPlugin
 					Bundle = bundle,
 					ReloadStart = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadStart),
 					Reload = bundle.LoadAsset<AnimationClip>(animationConfig.Reload),
-					ReloadEnd = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadEnd),
 					StartToReloadTransition = animationConfig.StartToReloadTransition,
 					ReloadToEndTransition = animationConfig.ReloadToEndTransition,
 					CompatibleMagPairs = animationConfig.CompatibleMagPairs,

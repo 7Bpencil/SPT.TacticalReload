@@ -1,7 +1,6 @@
 {
   "ReloadStart": "Assets/M4old/Content/Weapons/m4a1/m4a1_hands_out.anim",
   "Reload": "Assets/M4old/Content/Weapons/m4a1/m4a1_reload_admin.anim",
-  "ReloadEnd": "Assets/M4old/Content/Weapons/m4a1/m4a1_hands_in_half_2.anim",
   "StartToReloadTransition": 0.25,
   "ReloadToEndTransition": 0.25,
   "CompatibleMagPairs": [
