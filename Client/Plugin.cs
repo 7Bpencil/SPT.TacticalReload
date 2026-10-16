@@ -57,6 +57,53 @@ using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
 namespace SevenBoldPencil.TacticalReload;
 
+// TODO use reload end animations from old m4 and ak
+// yes, for all weapon masteries
+// or just give people best mastery for free, who cares
+// TODO we need generic system for states and transitions
+// transitions to next state are defined inside a state, same as unity
+// use only bool parameters, if parameter name is in HashSet<string>, then its true
+// TODO test fika with last kinda working implementation
+
+// Clips: {
+// 	"ak100_hands_out": "Assets/AK103/Content/Weapons/ak100/ak100_hands_out.anim",
+// 	"ak100_mag_admin": "Assets/AK103/Content/Weapons/ak100/ak100_mag_admin.anim",
+// 	"ak100_hands_in_half_2": "Assets/AK103/Content/Weapons/ak100/ak100_hands_in_half_2.anim"
+// },
+// ReloadStartState: "RELOAD PROGRESSIVE",
+// States: {
+// 	"RELOAD PROGRESSIVE": {
+// 		Clip: "ak100_hands_out",
+// 		Transitions: [
+// 			{
+// 				State: "RELOAD ADMIN",
+// 				Parameters: [],
+// 				Duration: 0.03041387
+// 			},
+// 			{
+// 				State: "RELOAD HIT",
+// 				Parameters: ["ReloadFast"],
+// 				Duration: 0.03041387
+// 			}
+// 		]
+// 	},
+// 	"RELOAD ADMIN": {
+// 		Clip: "ak100_mag_admin",
+// 		Transitions: [
+// 			{
+// 				State: "RELOAD END",
+// 				Parameters: [],
+// 				Duration: 0.1320968
+// 			}
+// 			{
+// 				State: "RELOAD CHARGE END",
+// 				Parameters: [],
+// 				Duration: 0.1320968
+// 			}
+// 		]
+// 	}
+// }
+
 [Serializable]
 public class WeaponConfig
 {
@@ -183,6 +230,29 @@ public class ReloadData
 		TryFireAnimationEvents(ref ReloadStart);
 	}
 
+	public string GetAnimatorReloadEndState()
+	{
+		// TODO this is not correct
+
+		var ammoInChamber = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINCHAMBER);
+		var ammoInMag = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINMAG);
+		var boltCatch = AnimatorWrapper.GetBool(AnimationControllerParametersTable.BOOL_BOLTCATCH);
+
+		if (ammoInChamber == 0)
+		{
+			if (boltCatch)
+			{
+				return "RELOAD CATCH END";
+			}
+			else if (ammoInMag > 0)
+			{
+				return "RELOAD CHARGE END";
+			}
+		}
+
+		return "RELOAD END";
+	}
+
 	public void Update()
 	{
         switch (ReloadState)
@@ -207,39 +277,32 @@ public class ReloadData
 			}
             case ReloadState.Reload:
 			{
-				if (PlayStateUntilEnd(ref Reload, AnimationData.ReloadToEndTransition))
-				{
-					ReloadState = ReloadState.ReloadToEnd;
-
-					// TODO this is AK only, we need generic system to set
-					// states, transition time for them, and parameter requirements
-
-					var layerIndex = AnimatorWrapper.GetLayerIndex("Hands");
-					var ammoInChamber = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINCHAMBER);
-					var ammoInMag = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINMAG);
-					if (ammoInChamber == 0 && ammoInMag > 0)
-					{
-						AnimatorWrapper.Play("RELOAD CHARGE END", layerIndex, 0f);
-					}
-					else
-					{
-						AnimatorWrapper.Play("RELOAD END", layerIndex, 0f);
-					}
-				}
-                break;
-			}
-            case ReloadState.ReloadToEnd:
-			{
-				if (PlayTransitionToEnd(ref Reload, AnimationData.ReloadToEndTransition))
+				if (PlayStateUntilEnd(ref Reload, 0))
 				{
 					ReloadState = ReloadState.Original;
 
-			        Graph.Stop();
-					Output.SetSourcePlayable(Playable.Null);
-			        Graph.Destroy();
+					var reloadEndState = GetAnimatorReloadEndState();
+					var layerIndex = AnimatorWrapper.GetLayerIndex("Hands");
+					AnimatorWrapper.Play(reloadEndState, layerIndex, 0f);
+
+					Graph.Destroy();
+
+					Plugin.Instance.LoggerInstance.LogWarning($"end state: {reloadEndState}");
 				}
                 break;
 			}
+   //          case ReloadState.ReloadToEnd:
+			// {
+			// 	if (PlayTransitionToEnd(ref Reload, AnimationData.ReloadToEndTransition))
+			// 	{
+			// 		ReloadState = ReloadState.Original;
+
+			// 		Graph.Destroy();
+
+			// 		Plugin.Instance.LoggerInstance.LogWarning($"STOP GRAPH");
+			// 	}
+   //              break;
+			// }
         }
 	}
 
