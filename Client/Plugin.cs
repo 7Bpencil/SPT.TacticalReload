@@ -169,6 +169,21 @@ public class Plugin : BaseUnityPlugin
         var filePath = "animation-events.jsonc";
         SafeIO.WriteAllTextAsync(filePath, json);
 	}
+
+	public void CheckIfWeaponHasAnimationClip(WeaponPrefab weaponPrefab)
+	{
+		if (weaponPrefab.Animator is UnityAnimatorWrapper animatorWrapper)
+		{
+			foreach (var clip in animatorWrapper.Animator.runtimeAnimatorController.animationClips)
+			{
+				var clipName = clip.name;
+				if (clipName.Contains("admin"))
+				{
+					Logger.LogWarning($"{weaponPrefab.gameObject.name}: {clipName}");
+				}
+			}
+		}
+	}
 #endif
 
 	public void AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
