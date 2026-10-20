@@ -57,94 +57,6 @@ using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
 namespace SevenBoldPencil.TacticalReload;
 
-// TODO use reload end animations from old m4 and ak
-// yes, for all weapon masteries
-// or just give people best mastery for free, who cares
-// TODO we need generic system for states and transitions
-// transitions to next state are defined inside a state, same as unity
-// use only bool parameters, if parameter name is in HashSet<string>, then its true
-// TODO test fika with last kinda working implementation
-
-// Clips: {
-// 	"ak100_hands_out": "Assets/AK103/Content/Weapons/ak100/ak100_hands_out.anim",
-// 	"ak100_mag_admin": "Assets/AK103/Content/Weapons/ak100/ak100_mag_admin.anim",
-// 	"ak100_hands_in_half_2": "Assets/AK103/Content/Weapons/ak100/ak100_hands_in_half_2.anim"
-// },
-// ReloadStartState: "RELOAD PROGRESSIVE",
-// States: {
-// 	"RELOAD PROGRESSIVE": {
-// 		Clip: "ak100_hands_out",
-// 		Transitions: [
-// 			{
-// 				State: "RELOAD ADMIN",
-// 				Parameters: [],
-// 				Duration: 0.03041387
-// 			},
-// 			{
-// 				State: "RELOAD HIT",
-// 				Parameters: ["ReloadFast"],
-// 				Duration: 0.03041387
-// 			}
-// 		]
-// 	},
-// 	"RELOAD ADMIN": {
-// 		Clip: "ak100_mag_admin",
-// 		Transitions: [
-// 			{
-// 				State: "RELOAD END",
-// 				Parameters: [],
-// 				Duration: 0.1320968
-// 			}
-// 			{
-// 				State: "RELOAD CHARGE END",
-// 				Parameters: [],
-// 				Duration: 0.1320968
-// 			}
-// 		]
-// 	}
-// }
-
-[Serializable]
-public class WeaponConfig
-{
-	public string AnimationName;
-}
-
-[Serializable]
-public class ReloadAnimationDataConfig
-{
-	public string ReloadStart;
-	public string Reload;
-
-	public double StartToReloadTransition;
-	public double ReloadToEndTransition;
-
-	public CompatibleMagPair[] CompatibleMagPairs;
-	public string[] AnimatedBones;
-	public AnimationEvent[] ReloadAnimationEvents;
-}
-
-[Serializable]
-public struct CompatibleMagPair
-{
-	public int Old;
-	public int New;
-}
-
-public class ReloadAnimationData
-{
-	public AssetBundle Bundle;
-	public AnimationClip ReloadStart;
-	public AnimationClip Reload;
-
-	public double StartToReloadTransition;
-	public double ReloadToEndTransition;
-
-	public CompatibleMagPair[] CompatibleMagPairs;
-	public AvatarMask AnimatedBones;
-	public AnimationEvent[] ReloadAnimationEvents;
-}
-
 [Serializable]
 public class AnimationBehaviourData
 {
@@ -154,269 +66,13 @@ public class AnimationBehaviourData
 	public List<AnimationEvent> AnimationEvents;
 }
 
-public enum ReloadState
-{
-	Original,
-	Start,
-	StartToReload,
-	Reload,
-	ReloadToEnd,
-}
-
-public record struct AnimationClipWrapper
-(
-	AnimationClip Clip,
-	AnimationClipPlayable Playable,
-	int Index,
-	AnimationEvent[] AnimationEvents,
-	int LastPlayedAnimationEventIndex
-);
-
 public class ReloadData
 {
 	public ReloadExternalMagOperation Operation;
-	public ReloadAnimationData AnimationData;
-
 	public Item OldMagItem;
 	public Transform OldMagView;
 	public Transform NewMagView;
 	public Transform OldBone;
-
-	public AnimationClipWrapper ReloadStart;
-	public AnimationClipWrapper Reload;
-
-	public ReloadState ReloadState;
-
-	public UnityAnimatorWrapper AnimatorWrapper;
-    public PlayableGraph Graph;
-    public AnimationPlayableOutput Output;
-    public AnimationLayerMixerPlayable MixerTop;
-    public AnimationMixerPlayable MixerReload;
-
-	public void Init(UnityAnimatorWrapper animatorWrapper)
-	{
-		ReloadState = ReloadState.Original;
-
-		AnimatorWrapper = animatorWrapper;
-		Graph = PlayableGraph.Create();
-		Output = AnimationPlayableOutput.Create(Graph, "main", AnimatorWrapper.Animator);
-
-		var originalAnimatorPlayable = AnimatorWrapper.Animator.playableGraph.GetOutputByType<AnimationPlayableOutput>(0).GetSourcePlayable();
-		var reloadStartPlayable = AnimationClipPlayable.Create(Graph, AnimationData.ReloadStart);
-		var reloadPlayable = AnimationClipPlayable.Create(Graph, AnimationData.Reload);
-
-		ReloadStart = new(AnimationData.ReloadStart, reloadStartPlayable, 0, [], -1);
-		Reload = new(AnimationData.Reload, reloadPlayable, 1, AnimationData.ReloadAnimationEvents, -1);
-
-		MixerReload = AnimationMixerPlayable.Create(Graph, 2);
-		MixerReload.ConnectInput(ReloadStart.Index, ReloadStart.Playable, 0);
-		MixerReload.ConnectInput(Reload.Index, Reload.Playable, 0);
-
-		MixerTop = AnimationLayerMixerPlayable.Create(Graph, 2, false);
-		MixerTop.ConnectInput(0, originalAnimatorPlayable, 0, 1);
-		MixerTop.ConnectInput(1, MixerReload, 0, 0);
-		MixerTop.SetLayerMaskFromAvatarMask(1, AnimationData.AnimatedBones);
-
-		Output.SetSourcePlayable(MixerTop);
-		Graph.Play();
-	}
-
-	public void StartReload()
-	{
-		ReloadState = ReloadState.Start;
-		ReloadStart.Playable.SetTime(0);
-		MixerTop.SetInputWeight(1, 1);
-        MixerReload.SetInputWeight(ReloadStart.Index, 1);
-		TryFireAnimationEvents(ref ReloadStart);
-	}
-
-	public string GetAnimatorReloadEndState()
-	{
-		// TODO this is not correct
-
-		var ammoInChamber = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINCHAMBER);
-		var ammoInMag = AnimatorWrapper.GetFloat(AnimationControllerParametersTable.FLOAT_AMMOINMAG);
-		var boltCatch = AnimatorWrapper.GetBool(AnimationControllerParametersTable.BOOL_BOLTCATCH);
-
-		if (ammoInChamber == 0)
-		{
-			if (boltCatch)
-			{
-				return "RELOAD CATCH END";
-			}
-			else if (ammoInMag > 0)
-			{
-				return "RELOAD CHARGE END";
-			}
-		}
-
-		return "RELOAD END";
-	}
-
-	public void Update()
-	{
-        switch (ReloadState)
-        {
-            case ReloadState.Start:
-			{
-				// TODO original reload doesnt have any transition to reload start,
-				// so we dont have too, but maybe we should?
-				if (PlayState(ref ReloadStart, ref Reload, AnimationData.StartToReloadTransition))
-				{
-					ReloadState = ReloadState.StartToReload;
-				}
-                break;
-			}
-            case ReloadState.StartToReload:
-			{
-				if (PlayStateTransition(ref ReloadStart, ref Reload, AnimationData.StartToReloadTransition))
-				{
-					ReloadState = ReloadState.Reload;
-				}
-                break;
-			}
-            case ReloadState.Reload:
-			{
-				if (PlayStateUntilEnd(ref Reload, 0))
-				{
-					ReloadState = ReloadState.Original;
-
-					var reloadEndState = GetAnimatorReloadEndState();
-					var layerIndex = AnimatorWrapper.GetLayerIndex("Hands");
-					AnimatorWrapper.Play(reloadEndState, layerIndex, 0f);
-
-					Graph.Destroy();
-
-					Plugin.Instance.LoggerInstance.LogWarning($"end state: {reloadEndState}");
-				}
-                break;
-			}
-   //          case ReloadState.ReloadToEnd:
-			// {
-			// 	if (PlayTransitionToEnd(ref Reload, AnimationData.ReloadToEndTransition))
-			// 	{
-			// 		ReloadState = ReloadState.Original;
-
-			// 		Graph.Destroy();
-
-			// 		Plugin.Instance.LoggerInstance.LogWarning($"STOP GRAPH");
-			// 	}
-   //              break;
-			// }
-        }
-	}
-
-	public bool PlayState(ref AnimationClipWrapper fromState, ref AnimationClipWrapper toState, double transitionDuration)
-	{
-		var fromTime = fromState.Playable.GetTime();
-		var fromDuration = fromState.Clip.length;
-		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
-
-		// Plugin.Instance.LoggerInstance.LogWarning($"PlayState          : {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
-
-		TryFireAnimationEvents(ref fromState);
-
-		if (toTime >= 0)
-		{
-	        MixerReload.SetInputWeight(fromState.Index, fromWeight);
-	        MixerReload.SetInputWeight(toState.Index, toWeight);
-	        toState.Playable.SetTime(toTime);
-			TryFireAnimationEvents(ref toState);
-			return true;
-		}
-
-		return false;
-	}
-
-	public bool PlayStateTransition(ref AnimationClipWrapper fromState, ref AnimationClipWrapper toState, double transitionDuration)
-	{
-		var fromTime = fromState.Playable.GetTime();
-		var fromDuration = fromState.Clip.length;
-		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
-
-		// Plugin.Instance.LoggerInstance.LogWarning($"PlayStateTransition: {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
-
-        MixerReload.SetInputWeight(fromState.Index, fromWeight);
-        MixerReload.SetInputWeight(toState.Index, toWeight);
-
-		TryFireAnimationEvents(ref fromState);
-		TryFireAnimationEvents(ref toState);
-
-		if (toTime >= transitionDuration)
-		{
-			return true;
-		}
-
-		return false;
-	}
-
-	public bool PlayStateUntilEnd(ref AnimationClipWrapper fromState, double transitionDuration)
-	{
-		var fromTime = fromState.Playable.GetTime();
-		var fromDuration = fromState.Clip.length;
-		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
-
-		// Plugin.Instance.LoggerInstance.LogWarning($"PlayState          : {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
-
-		TryFireAnimationEvents(ref fromState);
-
-		if (toTime >= 0)
-		{
-	        MixerReload.SetInputWeight(fromState.Index, fromWeight);
-			return true;
-		}
-
-		return false;
-	}
-
-	public bool PlayTransitionToEnd(ref AnimationClipWrapper fromState, double transitionDuration)
-	{
-		var fromTime = fromState.Playable.GetTime();
-		var fromDuration = fromState.Clip.length;
-		var (fromWeight, toWeight, toTime) = GetTransitionWeights(fromTime, fromDuration, transitionDuration);
-
-		// Plugin.Instance.LoggerInstance.LogWarning($"PlayStateTransition: {ReloadState}, {fromTime}|{fromWeight} {toTime}|{toWeight}");
-
-        MixerReload.SetInputWeight(fromState.Index, fromWeight);
-
-		TryFireAnimationEvents(ref fromState);
-
-		if (toTime >= transitionDuration)
-		{
-			return true;
-		}
-
-		return false;
-	}
-
-	public static (float fromWeight, float toWeight, double toTime) GetTransitionWeights(
-		double fromClipTime,
-		double fromClipDuration,
-		double transitionDuration
-	) {
-		var toTime = fromClipTime - (fromClipDuration - transitionDuration);
-		var toWeight = System.Math.Clamp(toTime / transitionDuration, 0, 1);
-		var fromWeight = 1 - toWeight;
-		return ((float)fromWeight, (float)toWeight, toTime);
-	}
-
-	public void TryFireAnimationEvents(ref AnimationClipWrapper state)
-	{
-		var time = state.Playable.GetTime() / state.Clip.length;
-		var animationEvents = state.AnimationEvents;
-		var animationEventsEmitter = Operation.Controller._weaponPrefab.AnimationEventsEmitter;
-		for (var i = 0; i < animationEvents.Length; i++)
-		{
-			var animationEvent = animationEvents[i];
-			if (time >= animationEvent.Time && i > state.LastPlayedAnimationEventIndex)
-			{
-				// Plugin.Instance.LoggerInstance.LogWarning($"Fire Event: {animationEvent.FunctionName}");
-
-				state.LastPlayedAnimationEventIndex = i;
-				animationEventsEmitter.SendEvent(animationEvent.FunctionName, animationEvent.FunctionNameHash, animationEvent.Parameter, 0);
-			}
-		}
-	}
 }
 
 [BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
@@ -428,8 +84,6 @@ public class Plugin : BaseUnityPlugin
 
 	public List<ModulePatch> Patches;
 
-	public Dictionary<string, ReloadAnimationData> CustomReloadAnimations;
-	public Dictionary<string, WeaponConfig> WeaponConfigs;
 	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
 
     private void Awake()
@@ -466,8 +120,6 @@ public class Plugin : BaseUnityPlugin
 		}
 
         var assemblyDir = Path.GetDirectoryName(assemblyPath);
-		CustomReloadAnimations = LoadCustomReloadAnimations(assemblyDir);
-		WeaponConfigs = LoadWeaponConfigs(assemblyDir);
 		Reloads = new();
 	}
 
@@ -484,83 +136,7 @@ public class Plugin : BaseUnityPlugin
 			patch.Disable();
 		}
 		Patches.Clear();
-
-		foreach (var animationData in CustomReloadAnimations.Values)
-		{
-			animationData.Bundle.Unload(true);
-		}
-		CustomReloadAnimations.Clear();
-
-		WeaponConfigs.Clear();
 		Reloads.Clear();
-	}
-
-	public Dictionary<string, ReloadAnimationData> LoadCustomReloadAnimations(string assemblyDir)
-	{
-		var animationsPath = Path.Combine(assemblyDir, "data", "animations");
-		var animationConfigPaths = SafeIO.GetFiles(animationsPath, "*.jsonc");
-		var result = new Dictionary<string, ReloadAnimationData>(animationConfigPaths.Length);
-		foreach (var animationConfigPath in animationConfigPaths)
-		{
-			if (SafeIO.ReadAllText(animationConfigPath).Ok(out var animationConfigJson, out var _))
-			{
-				var animationConfig = JsonConvert.DeserializeObject<ReloadAnimationDataConfig>(animationConfigJson);
-				var filename = Path.GetFileNameWithoutExtension(animationConfigPath);
-				var bundlePath = Path.Combine(assemblyDir, "data", "animations", $"{filename}.bundle");
-				var bundle = AssetBundle.LoadFromFile(bundlePath);
-				var animationData = new ReloadAnimationData()
-				{
-					Bundle = bundle,
-					ReloadStart = bundle.LoadAsset<AnimationClip>(animationConfig.ReloadStart),
-					Reload = bundle.LoadAsset<AnimationClip>(animationConfig.Reload),
-					StartToReloadTransition = animationConfig.StartToReloadTransition,
-					ReloadToEndTransition = animationConfig.ReloadToEndTransition,
-					CompatibleMagPairs = animationConfig.CompatibleMagPairs,
-					AnimatedBones = CreateMask(animationConfig.AnimatedBones),
-					ReloadAnimationEvents = animationConfig.ReloadAnimationEvents,
-				};
-				result.Add(filename, animationData);
-			}
-		}
-
-		return result;
-	}
-
-	public static AvatarMask CreateMask(string[] bones)
-    {
-        var mask = new AvatarMask();
-		mask.transformCount = bones.Length;
-		for (var i = 0; i < bones.Length; i++)
-		{
-			mask.SetTransformPath(i, bones[i]);
-			mask.SetTransformActive(i, true);
-		}
-        return mask;
-    }
-
-	public Dictionary<string, WeaponConfig> LoadWeaponConfigs(string assemblyDir)
-	{
-		var weaponsPath = Path.Combine(assemblyDir, "data", "weapons");
-		var weaponsConfigPaths = SafeIO.GetFiles(weaponsPath, "*.jsonc");
-		var result = new Dictionary<string, WeaponConfig>(weaponsConfigPaths.Length);
-		foreach (var weaponConfigPath in weaponsConfigPaths)
-		{
-			if (SafeIO.ReadAllText(weaponConfigPath).Ok(out var weaponConfigJson, out var _))
-			{
-				var weaponConfig = JsonConvert.DeserializeObject<WeaponConfig>(weaponConfigJson);
-				var templateId = Path.GetFileNameWithoutExtension(weaponConfigPath);
-				result.Add(templateId, weaponConfig);
-			}
-		}
-		return result;
-	}
-
-	public void Update()
-	{
-		foreach (var reload in Reloads.Values)
-		{
-			reload.Update();
-		}
 	}
 
 #if DEBUG
@@ -644,18 +220,17 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		{
 			return;
 		}
-		if (!Plugin.Instance.WeaponConfigs.TryGetValue(__instance.Weapon.StringTemplateId, out var weaponConfig))
-		{
-			return;
-		}
-		if (!Plugin.Instance.CustomReloadAnimations.TryGetValue(weaponConfig.AnimationName, out var animationData))
-		{
-			return;
-		}
+		// if (!Plugin.Instance.WeaponConfigs.TryGetValue(__instance.Weapon.StringTemplateId, out var weaponConfig))
+		// {
+		// 	return;
+		// }
+		// if (!Plugin.Instance.CustomReloadAnimations.TryGetValue(weaponConfig.AnimationName, out var animationData))
+		// {
+		// 	return;
+		// }
 		if (!IsMagPairCompatible(
 			reloadExternalMagResult.OldMagazine.magAnimationIndex,
-			reloadExternalMagResult.NextMagazine.magAnimationIndex,
-			animationData.CompatibleMagPairs))
+			reloadExternalMagResult.NextMagazine.magAnimationIndex))
 		{
 			return;
 		}
@@ -663,20 +238,13 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		Plugin.Instance.Reloads.Add(__instance.FirearmsAnimator, new()
 		{
 			Operation = __instance,
-			AnimationData = animationData,
 		});
 	}
 
-   	public static bool IsMagPairCompatible(int oldMag, int newMag, CompatibleMagPair[] compatiblePairs)
+   	public static bool IsMagPairCompatible(int oldMag, int newMag)
 	{
-		foreach (var pair in compatiblePairs)
-		{
-			if (oldMag == pair.Old && newMag == pair.New)
-			{
-				return true;
-			}
-		}
-		return false;
+		// TODO hardcoded!
+		return oldMag == 0 && newMag == 0;
 	}
 }
 
@@ -704,8 +272,8 @@ public class Patch_FirearmsAnimator_Reload : ModulePatch
 				// animatorWrapper.Play("RELOAD PROGRESSIVE", layerIndex, 0);
 
 				// TODO reuse playable graph
-				reload.Init(animatorWrapper);
-				reload.StartReload();
+				// reload.Init(animatorWrapper);
+				// reload.StartReload();
 			}
 
 			return false;
