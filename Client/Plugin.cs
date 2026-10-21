@@ -299,14 +299,14 @@ public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatc
 public class PrintDebug : ModulePatch
 {
 	private readonly Type Type;
-	private readonly Type[] Parameters;
 	private readonly string MethodName;
+	private readonly Type[] Parameters;
 
 	public PrintDebug(Type type, string methodName, Type[] parameters = null)
 	{
 		Type = type;
-		Parameters = parameters;
 		MethodName = methodName;
+		Parameters = parameters;
 	}
 
     protected override MethodBase GetTargetMethod()
