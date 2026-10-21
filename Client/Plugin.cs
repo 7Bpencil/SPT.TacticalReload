@@ -164,9 +164,9 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		});
 	}
 
+	// TODO hardcoded!
    	public static bool IsMagPairCompatible(int oldMag, int newMag)
 	{
-		// TODO hardcoded!
 		return oldMag == 0 && newMag == 0;
 	}
 }
