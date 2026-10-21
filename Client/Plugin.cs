@@ -5,53 +5,20 @@
 // LICENSE file in the root directory of this source tree.
 //
 
-using AnimationSystem;
-using AnimationEventSystem;
 using BepInEx;
-using BepInEx.Configuration;
 using BepInEx.Logging;
 using Comfort.Common;
-using Diz.Skinning;
-using Diz.Jobs;
-using Diz.Utils;
-using EFT;
-using EFT.CameraControl;
-using EFT.GameTriggers;
-using EFT.Impostors;
-using EFT.Interactive;
-using EFT.Settings.Graphics;
-using EFT.UI.Settings;
-using EFT;
-using EFT.Animations;
 using EFT.AssetsManager;
 using EFT.InventoryLogic;
-using EFT.Visual;
-using EFT.UI;
-using EFT.UI.WeaponModding;
-using EFT.Utilities;
-using Newtonsoft.Json;
 using HarmonyLib;
-using SevenBoldPencil.Common;
 using SPT.Reflection.Patching;
 using System;
 using System.IO;
 using System.Reflection;
-using System.Collections;
 using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.Animations;
-using UnityEngine.Playables;
-using JsonType;
-using GPUInstancer;
-using Koenigz.PerfectCulling.EFT;
-using FirearmController = EFT.Player.FirearmController;
 using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMagOperation;
 using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagResult;
-using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
 namespace SevenBoldPencil.TacticalReload;
 
