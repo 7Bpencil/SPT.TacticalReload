@@ -22,6 +22,27 @@ using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagRe
 
 namespace SevenBoldPencil.TacticalReload;
 
+public class WeaponData : IDisposable
+{
+	public AssetBundle Bundle;
+	public RuntimeAnimatorController AnimatorController;
+
+	public void Dispose()
+	{
+		Bundle.Unload(true);
+	}
+}
+
+public class WeaponInstanceData : IDisposable
+{
+	public WeaponData Data;
+
+	public void Dispose()
+	{
+
+	}
+}
+
 public class ReloadData
 {
 	public ReloadExternalMagOperation Operation;
@@ -40,6 +61,8 @@ public class Plugin : BaseUnityPlugin
 
 	public List<ModulePatch> Patches;
 
+	public Dictionary<string, WeaponData> Weapons;
+	public Dictionary<WeaponPrefab, WeaponInstanceData> WeaponInstances;
 	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
 
     private void Awake()
@@ -50,6 +73,8 @@ public class Plugin : BaseUnityPlugin
 
 		Patches = new();
 
+		RegisterPatch(new Patch_WeaponPrefab_CacheInternalObjects());
+		RegisterPatch(new Patch_AssetPoolObject_OnDestroy());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Reset());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Start());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagPuttedToRig());
@@ -75,6 +100,15 @@ public class Plugin : BaseUnityPlugin
 		}
 
         var assemblyDir = Path.GetDirectoryName(assemblyPath);
+		var bundlePath = Path.Combine(assemblyDir, "data", "7b_ak74m.bundle");
+		var bundle = AssetBundle.LoadFromFile(bundlePath);
+		Weapons = new();
+		Weapons["weapon_izhmash_ak74m_545x39_container(Clone)"] = new()
+		{
+			Bundle = bundle,
+			AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_izhmash_ak74m_545x39_container/Content/Weapons/ak74m/weapon_izhmash_ak74m_545x39.controller"),
+		};
+		WeaponInstances = new();
 		Reloads = new();
 	}
 
@@ -91,7 +125,20 @@ public class Plugin : BaseUnityPlugin
 			patch.Disable();
 		}
 		Patches.Clear();
+
 		Reloads.Clear();
+
+		foreach (var weaponInstance in WeaponInstances.Values)
+		{
+			weaponInstance.Dispose();
+		}
+		WeaponInstances.Clear();
+
+		foreach (var weapon in Weapons.Values)
+		{
+			weapon.Dispose();
+		}
+		Weapons.Clear();
 	}
 
 	public void AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
@@ -143,14 +190,10 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		{
 			return;
 		}
-		// if (!Plugin.Instance.WeaponConfigs.TryGetValue(__instance.Weapon.StringTemplateId, out var weaponConfig))
-		// {
-		// 	return;
-		// }
-		// if (!Plugin.Instance.CustomReloadAnimations.TryGetValue(weaponConfig.AnimationName, out var animationData))
-		// {
-		// 	return;
-		// }
+		if (!Plugin.Instance.WeaponInstances.TryGetValue(__instance.Controller._weaponPrefab, out var weaponInstanceData))
+		{
+			return;
+		}
 		if (!IsMagPairCompatible(
 			reloadExternalMagResult.OldMagazine.magAnimationIndex,
 			reloadExternalMagResult.NextMagazine.magAnimationIndex))
@@ -291,6 +334,102 @@ public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatc
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 			reload.NewMagView.SetParent(reload.OldBone);
+		}
+	}
+}
+
+public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(WeaponPrefab), nameof(WeaponPrefab.CacheInternalObjects));
+    }
+
+    [PatchPrefix]
+    public static void Prefix(WeaponPrefab __instance, bool ____cacheInternalObjectsBeenCalled)
+	{
+		// TODO dillema: I need to hook into animator as early as possible,
+		// but theres no Weapon to check what template id this weapon has...
+		// weapon container name looks unique, but probably not
+
+		if (__instance._objectInstance &&
+			!____cacheInternalObjectsBeenCalled &&
+			Plugin.Instance.Weapons.TryGetValue(__instance.gameObject.name, out var weaponData))
+		{
+			var animator = __instance._objectInstance.GetComponent<Animator>();
+			var parameters = CopyParameters(animator); // TODO is this even needed?
+			animator.runtimeAnimatorController = weaponData.AnimatorController;
+			WriteParameters(animator, parameters);
+			Plugin.Instance.WeaponInstances.Add(__instance, new()
+			{
+				Data = weaponData,
+			});
+
+			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance.gameObject.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
+		}
+	}
+
+	public struct AnimatorParameter
+	{
+		public AnimatorControllerParameterType Type;
+		public int NameHash;
+		public float Float;
+		public int Int;
+		public bool Bool;
+	}
+
+	public static AnimatorParameter[] CopyParameters(Animator source)
+	{
+		var parameters = source.parameters;
+		var result = new AnimatorParameter[parameters.Length];
+		for (var i = 0; i < parameters.Length; i++)
+		{
+			var parameter = parameters[i];
+			var p = new AnimatorParameter()
+			{
+				Type = parameter.type,
+				NameHash = parameter.nameHash,
+			};
+	        switch (p.Type)
+	        {
+	            case AnimatorControllerParameterType.Float: p.Float = source.GetFloat(p.NameHash); break;
+	            case AnimatorControllerParameterType.Int: p.Int = source.GetInteger(p.NameHash); break;
+	            case AnimatorControllerParameterType.Bool: p.Bool = source.GetBool(p.NameHash); break;
+	        }
+			result[i] = p;
+		}
+		return result;
+	}
+
+	public static void WriteParameters(Animator target, AnimatorParameter[] parameters)
+	{
+		foreach (var parameter in parameters)
+		{
+	        switch (parameter.Type)
+			{
+	            case AnimatorControllerParameterType.Float: target.SetFloat(parameter.NameHash, parameter.Float); break;
+	            case AnimatorControllerParameterType.Int: target.SetInteger(parameter.NameHash, parameter.Int); break;
+	            case AnimatorControllerParameterType.Bool: target.SetBool(parameter.NameHash, parameter.Bool); break;
+			}
+		}
+	}
+}
+
+public class Patch_AssetPoolObject_OnDestroy : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(AssetPoolObject), nameof(AssetPoolObject.OnDestroy));
+    }
+
+    [PatchPrefix]
+    public static void Prefix(AssetPoolObject __instance)
+	{
+		if (__instance is WeaponPrefab weaponPrefab &&
+			Plugin.Instance.WeaponInstances.Remove(weaponPrefab, out var weaponInstanceData))
+		{
+			weaponInstanceData.Dispose();
+			Logger.LogWarning($"Patch_AssetPoolObject_OnDestroy: {weaponPrefab.gameObject.name} {weaponPrefab.gameObject.GetInstanceID()}|{weaponPrefab._objectInstance.GetInstanceID()}");
 		}
 	}
 }
