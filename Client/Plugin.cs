@@ -103,13 +103,13 @@ public class Plugin : BaseUnityPlugin
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon());
 
 #if DEBUG
-		RegisterPatch(new PrintDebug<byte>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)));
-		RegisterPatch(new PrintDebug<short>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]));
-		RegisterPatch(new PrintDebug<ushort>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)));
-		RegisterPatch(new PrintDebug<int>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)));
-		RegisterPatch(new PrintDebug<uint>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)));
-		RegisterPatch(new PrintDebug<long>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)));
-		RegisterPatch(new PrintDebug<ulong>(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)));
+		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)));
+		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]));
+		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)));
+		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)));
+		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)));
+		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)));
+		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)));
 #endif
 
 		var assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -423,13 +423,11 @@ public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatc
 }
 
 #if DEBUG
-// T is a dummy class, to keep all print debug classes separate,
-// otherwise they will share MethodName (because its static)
-public class PrintDebug<T> : ModulePatch
+public class PrintDebug : ModulePatch
 {
 	private readonly Type Type;
 	private readonly Type[] Parameters;
-	private static string MethodName;
+	private readonly string MethodName;
 
 	public PrintDebug(Type type, string methodName, Type[] parameters = null)
 	{
@@ -444,9 +442,9 @@ public class PrintDebug<T> : ModulePatch
     }
 
     [PatchPrefix]
-    public static void Prefix()
+    public static void Prefix(MethodBase __originalMethod)
 	{
-		Logger.LogWarning(MethodName);
+		Logger.LogWarning($"{__originalMethod.DeclaringType.Name}.{__originalMethod.Name}");
 	}
 }
 #endif
