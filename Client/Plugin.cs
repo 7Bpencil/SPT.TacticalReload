@@ -5,8 +5,6 @@
 // LICENSE file in the root directory of this source tree.
 //
 
-// TODO just make custom animation events
-
 using AnimationSystem;
 using AnimationEventSystem;
 using BepInEx;
@@ -56,15 +54,6 @@ using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagRe
 using AnimationEvent = AnimationEventSystem.AnimationEvent;
 
 namespace SevenBoldPencil.TacticalReload;
-
-[Serializable]
-public class AnimationBehaviourData
-{
-	public string FullName;
-	public int FullNameHash;
-	public int EventsListId;
-	public List<AnimationEvent> AnimationEvents;
-}
 
 public class ReloadData
 {
@@ -138,53 +127,6 @@ public class Plugin : BaseUnityPlugin
 		Patches.Clear();
 		Reloads.Clear();
 	}
-
-#if DEBUG
-	public void DumpAnimationData(WeaponPrefab weaponPrefab)
-	{
-		var result = new List<AnimationBehaviourData>();
-		foreach (var ieventBehaviour in weaponPrefab.AnimationEventsEmitter._animationEventsStateBehaviours)
-		{
-			if (ieventBehaviour is not AnimationEventsStateBehaviour eventBehaviour)
-			{
-				continue;
-			}
-
-			var resultAnimationEvents = new List<AnimationEvent>();
-			foreach (var animationEvent in eventBehaviour.AnimationEvents)
-			{
-				resultAnimationEvents.Add((AnimationEvent)animationEvent.Clone());
-			}
-
-			result.Add(new()
-			{
-				FullName = eventBehaviour.FullName,
-				FullNameHash = eventBehaviour.FullNameHash,
-				EventsListId = eventBehaviour.EventsListId,
-				AnimationEvents = resultAnimationEvents,
-			});
-		}
-
-        var json = JsonConvert.SerializeObject(result, Formatting.Indented);
-        var filePath = "animation-events.jsonc";
-        SafeIO.WriteAllTextAsync(filePath, json);
-	}
-
-	public void CheckIfWeaponHasAnimationClip(WeaponPrefab weaponPrefab)
-	{
-		if (weaponPrefab.Animator is UnityAnimatorWrapper animatorWrapper)
-		{
-			foreach (var clip in animatorWrapper.Animator.runtimeAnimatorController.animationClips)
-			{
-				var clipName = clip.name;
-				if (clipName.Contains("admin"))
-				{
-					Logger.LogWarning($"{weaponPrefab.gameObject.name}: {clipName}");
-				}
-			}
-		}
-	}
-#endif
 
 	public void AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
 	{
