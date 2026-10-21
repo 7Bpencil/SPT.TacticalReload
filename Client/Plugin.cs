@@ -85,7 +85,6 @@ public class Plugin : BaseUnityPlugin
 
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Reset());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Start());
-		RegisterPatch(new Patch_FirearmsAnimator_Reload());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagPuttedToRig());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagAppeared());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_UseSecondMagForReload());
@@ -202,41 +201,6 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 	{
 		// TODO hardcoded!
 		return oldMag == 0 && newMag == 0;
-	}
-}
-
-public class Patch_FirearmsAnimator_Reload : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(FirearmsAnimator), nameof(FirearmsAnimator.Reload), [typeof(int), typeof(int), typeof(bool)]);
-    }
-
-    [PatchPrefix]
-    public static bool Prefix(FirearmsAnimator __instance, int currentMagType, int nextMagType, bool isFast)
-	{
-		// FirearmsAnimator.Reload is called right inside ReloadExternalMagOperation.Start, so I am pretty sure
-		// that we are still in the same Operation that wanted tactical reload, and using FirearmsAnimator as a key is fine
-
-		if (Plugin.Instance.Reloads.TryGetValue(__instance, out var reload))
-		{
-			__instance.SetMagTypeCurrent(currentMagType);
-			__instance.SetMagTypeNew(nextMagType);
-
-			if (__instance.Animator is UnityAnimatorWrapper animatorWrapper)
-			{
-				// var layerIndex = animatorWrapper.GetLayerIndex("Hands"); // TODO cache
-				// animatorWrapper.Play("RELOAD PROGRESSIVE", layerIndex, 0);
-
-				// TODO reuse playable graph
-				// reload.Init(animatorWrapper);
-				// reload.StartReload();
-			}
-
-			return false;
-		}
-
-		return true;
 	}
 }
 
