@@ -286,6 +286,14 @@ public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
 
 			reload.NewMagView = newMagView;
 			reload.OldBone = oldBone;
+
+			// this code is originally run on OnMagInsertedToWeapon, but for animation reasons
+			// we emit that event pretty late, sometimes so late, that animation can
+			// transition into wrong state because MagInWeapon and AmmoOnMag are not setup in time,
+			// so the easiest solution is to set them here beforehand
+
+			__instance.FirearmsAnimator.SetMagInWeapon(ok: true);
+			__instance.FirearmsAnimator.SetAmmoOnMag(__instance.ReloadExternalMagResult.NextMagazine.Count + ((__instance.ReloadExternalMagResult.PopNewAmmoResult != null) ? 1 : 0));
 		}
 	}
 }
