@@ -20,6 +20,28 @@ using UnityEngine;
 using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMagOperation;
 using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagResult;
 
+// How to add tactical reload states to animator:
+// 1) Create "TACTICAL RELOAD START" and "TACTICAL RELOAD" states,
+// add AnimationEventsStateBehaviour component on them and configure it
+// 2) Add transitions:
+// - "IDLE" -> "TACTICAL RELOAD START" (use "IDLE" -> "RELOAD START" as an example)
+// Tip: Use "Copy Transition Parameters" and "Paste Both"
+// - "TACTICAL RELOAD START" -> "TACTICAL RELOAD" (use "RELOAD PROGRESSIVE" -> "RELOAD ADMIN" as an exmaple if they exist)
+// - "TACTICAL RELOAD" -> various reload end variants, look at "RELOAD IN" for example
+// Tip: Use AnimatorTransitionCopierWindow tool via "Custom Windows/7Bpencil/Animator Transition Copier"
+// Tip: Remove RELOAD IN DISABLED, its unused anyway and has potential to ruin things
+// Tip: Dont forget to set "SpeedReload" parameter on state
+
+// Animation events in the order which they should appear during reload:
+// event name -> called function
+// MagOut  -> OnMagPulledOutFromWeapon
+// MagHide -> OnMagPuttedToRig
+// MagShow -> OnMagAppeared
+// UseSecondMagForReload -> UseSecondMagForReload
+// MagIn   -> OnMagInsertedToWeapon
+
+// TODO make separate trigger or parameter for tactical reload to not deal with RelTypeOld and RelTypeNew float comparison bullshit
+
 namespace SevenBoldPencil.TacticalReload;
 
 public class WeaponData : IDisposable
@@ -228,8 +250,8 @@ public class Patch_ReloadExternalMagOperation_OnMagPuttedToRig : ModulePatch
 		// its item gets removed from slot and item view is destroyed, then
 		// new mag is spawned, item gets inserted into slot and animation of putting it in is played.
 		// This means player never sees two mags at the same time.
-		// To not break anything I keep order of events the same, but do not dispawn old mag object
-		// until UseSecondMagForReload event
+		// To not break anything I keep order of events the same,
+		// but do not dispawn old mag object until UseSecondMagForReload event
 
 		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
@@ -270,8 +292,8 @@ public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
     [PatchPostfix]
     public static void Postfix(ReloadExternalMagOperation __instance)
 	{
-		// This event is fired when new mag first appears on the screen, usually its almost at the
-		// start of the animation
+		// This event is fired when new mag first appears on the screen,
+		// usually its almost at the start of the animation
 
 		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
