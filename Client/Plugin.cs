@@ -129,7 +129,7 @@ public class Plugin : BaseUnityPlugin
 		var bundlePath = Path.Combine(assemblyDir, "data", "7b_ak74m.bundle");
 		var bundle = AssetBundle.LoadFromFile(bundlePath);
 		Weapons = new();
-		Weapons["weapon_izhmash_ak74m_545x39_container(Clone)"] = new()
+		Weapons["weapon_izhmash_ak74m_545x39.generated(Clone)"] = new()
 		{
 			Bundle = bundle,
 			AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_izhmash_ak74m_545x39_container/Content/Weapons/ak74m/weapon_izhmash_ak74m_545x39.controller"),
@@ -425,11 +425,10 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 	{
 		// TODO dillema: I need to hook into animator as early as possible,
 		// but theres no Weapon to check what template id this weapon has...
-		// weapon container name looks unique, but probably not
+		// weapon object name looks unique, but probably not
 
-		if (__instance._objectInstance &&
-			!____cacheInternalObjectsBeenCalled &&
-			Plugin.Instance.Weapons.TryGetValue(__instance.gameObject.name, out var weaponData))
+		if (__instance._objectInstance && !____cacheInternalObjectsBeenCalled &&
+			Plugin.Instance.Weapons.TryGetValue(__instance._objectInstance.name, out var weaponData))
 		{
 			var animator = __instance._objectInstance.GetComponent<Animator>();
 			animator.runtimeAnimatorController = weaponData.AnimatorController;
@@ -438,7 +437,7 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 				Data = weaponData,
 			});
 
-			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance.gameObject.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
+			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance._objectInstance.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
 		}
 	}
 }
