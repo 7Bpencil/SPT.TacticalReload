@@ -53,7 +53,7 @@ public class WeaponData : IDisposable
 
 	public void Dispose()
 	{
-		Bundle.Unload(true);
+		Bundle.Unload(false);
 	}
 }
 
