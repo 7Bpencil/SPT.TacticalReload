@@ -420,60 +420,13 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 			Plugin.Instance.Weapons.TryGetValue(__instance.gameObject.name, out var weaponData))
 		{
 			var animator = __instance._objectInstance.GetComponent<Animator>();
-			var parameters = CopyParameters(animator); // TODO is this even needed?
 			animator.runtimeAnimatorController = weaponData.AnimatorController;
-			WriteParameters(animator, parameters);
 			Plugin.Instance.WeaponInstances.Add(__instance, new()
 			{
 				Data = weaponData,
 			});
 
 			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance.gameObject.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
-		}
-	}
-
-	public struct AnimatorParameter
-	{
-		public AnimatorControllerParameterType Type;
-		public int NameHash;
-		public float Float;
-		public int Int;
-		public bool Bool;
-	}
-
-	public static AnimatorParameter[] CopyParameters(Animator source)
-	{
-		var parameters = source.parameters;
-		var result = new AnimatorParameter[parameters.Length];
-		for (var i = 0; i < parameters.Length; i++)
-		{
-			var parameter = parameters[i];
-			var p = new AnimatorParameter()
-			{
-				Type = parameter.type,
-				NameHash = parameter.nameHash,
-			};
-	        switch (p.Type)
-	        {
-	            case AnimatorControllerParameterType.Float: p.Float = source.GetFloat(p.NameHash); break;
-	            case AnimatorControllerParameterType.Int: p.Int = source.GetInteger(p.NameHash); break;
-	            case AnimatorControllerParameterType.Bool: p.Bool = source.GetBool(p.NameHash); break;
-	        }
-			result[i] = p;
-		}
-		return result;
-	}
-
-	public static void WriteParameters(Animator target, AnimatorParameter[] parameters)
-	{
-		foreach (var parameter in parameters)
-		{
-	        switch (parameter.Type)
-			{
-	            case AnimatorControllerParameterType.Float: target.SetFloat(parameter.NameHash, parameter.Float); break;
-	            case AnimatorControllerParameterType.Int: target.SetInteger(parameter.NameHash, parameter.Int); break;
-	            case AnimatorControllerParameterType.Bool: target.SetBool(parameter.NameHash, parameter.Bool); break;
-			}
 		}
 	}
 }
