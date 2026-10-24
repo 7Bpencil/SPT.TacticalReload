@@ -49,6 +49,7 @@ public class WeaponData : IDisposable
 {
 	public AssetBundle Bundle;
 	public RuntimeAnimatorController AnimatorController;
+	public int[] SupportedMags;
 
 	public void Dispose()
 	{
@@ -131,6 +132,12 @@ public class Plugin : BaseUnityPlugin
 		{
 			Bundle = bundle,
 			AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_izhmash_ak74m_545x39_container/Content/Weapons/ak74m/weapon_izhmash_ak74m_545x39.controller"),
+			SupportedMags =
+			[
+				0, // 20rd/30rd standard mags
+				1, // 45rd mags, had to add it, because 6L26 (black one) has anim index 0 for some reason
+				4, // 30rd ak-12 mags
+			],
 		};
 		WeaponInstances = new();
 		Reloads = new();
@@ -213,7 +220,7 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		{
 			return;
 		}
-		if (!IsMagPairCompatible(
+		if (!IsMagPairCompatible(weaponInstanceData.Data.SupportedMags,
 			reloadExternalMagResult.OldMagazine.magAnimationIndex,
 			reloadExternalMagResult.NextMagazine.magAnimationIndex))
 		{
@@ -226,10 +233,10 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		});
 	}
 
-	// TODO hardcoded!
-   	public static bool IsMagPairCompatible(int oldMag, int newMag)
+   	public static bool IsMagPairCompatible(int[] supportedMags, int oldMag, int newMag)
 	{
-		return oldMag == 0 && newMag == 0;
+		return Array.IndexOf(supportedMags, oldMag) != -1 &&
+		       Array.IndexOf(supportedMags, newMag) != -1;
 	}
 }
 
