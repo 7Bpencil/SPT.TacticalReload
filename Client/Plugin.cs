@@ -21,19 +21,17 @@ using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMa
 using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagResult;
 
 // How to add tactical reload states to animator:
-// 1) Create "TACTICAL RELOAD START", "TACTICAL RELOAD" and "TACTICAL RELOAD START FAST", "TACTICAL RELOAD FAST" states,
+// 1) Create states "TACTICAL RELOAD START", "TACTICAL RELOAD" and "TACTICAL RELOAD START FAST", "TACTICAL RELOAD FAST",
 // add AnimationEventsStateBehaviour component on them and configure it
 // 2) Add transitions:
-// - "IDLE" -> "TACTICAL RELOAD START" (use "IDLE" -> "RELOAD START" as an example)
-// - "IDLE" -> "TACTICAL RELOAD START FAST" (use "IDLE" -> "RELOAD OUT ALL" as an example)
+// - "IDLE" -> "TACTICAL RELOAD START" (use "IDLE" -> "RELOAD START" as an example, but with "ReloadTactical" as trigger)
+// - "IDLE" -> "TACTICAL RELOAD START FAST" (use "IDLE" -> "RELOAD OUT ALL" as an example, but with "ReloadTacticalFast" as trigger)
 // Tip: Use "Copy Transition Parameters" and "Paste Both"
 // - "TACTICAL RELOAD START" -> "TACTICAL RELOAD" (use "RELOAD PROGRESSIVE" -> "RELOAD ADMIN" as an exmaple if they exist)
 // - "TACTICAL RELOAD START FAST" -> "TACTICAL RELOAD FAST" (use "RELOAD PROGRESSIVE" -> "RELOAD HIT" as an exmaple if they exist)
-// - "TACTICAL RELOAD" -> various reload end variants, look at "RELOAD IN" for example
-// - "TACTICAL RELOAD FAST" -> various reload end variants, look at "RELOAD IN" for example
+// - "TACTICAL RELOAD" and "TACTICAL RELOAD FAST" -> various reload end variants, look at "RELOAD IN" for example
 // Tip: Use AnimatorTransitionCopierWindow tool via "Custom Windows/7Bpencil/Animator Transition Copier"
-// Tip: Remove RELOAD IN DISABLED, its unused anyway and has potential to ruin things
-// Tip: Dont forget to set "SpeedReload" parameter on state
+// Tip: Dont forget to set "SpeedReload" parameter on states
 
 // Animation events in the order which they should appear during reload:
 // event name -> called function
@@ -44,6 +42,7 @@ using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagRe
 // MagIn   -> OnMagInsertedToWeapon
 
 // TODO make separate trigger or parameter for tactical reload to not deal with RelTypeOld and RelTypeNew float comparison bullshit
+// TODO in inventory reload (from "INV TO RELOAD" state)
 
 namespace SevenBoldPencil.TacticalReload;
 
