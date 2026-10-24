@@ -50,6 +50,7 @@ public class WeaponData : IDisposable
 	public AssetBundle Bundle;
 	public RuntimeAnimatorController AnimatorController;
 	public int[] SupportedMags;
+	public bool HasReloadTacticalFast;
 
 	public void Dispose()
 	{
@@ -138,6 +139,7 @@ public class Plugin : BaseUnityPlugin
 				1, // 45rd mags, had to add it, because 6L26 (black one) has anim index 0 for some reason
 				4, // 30rd ak-12 mags
 			],
+			HasReloadTacticalFast = true,
 		};
 		WeaponInstances = new();
 		Reloads = new();
@@ -217,6 +219,10 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 			return;
 		}
 		if (!Plugin.Instance.WeaponInstances.TryGetValue(__instance.Controller._weaponPrefab, out var weaponInstanceData))
+		{
+			return;
+		}
+		if (reloadExternalMagResult.QuickReload && !weaponInstanceData.Data.HasReloadTacticalFast)
 		{
 			return;
 		}
