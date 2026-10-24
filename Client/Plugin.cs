@@ -21,13 +21,16 @@ using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMa
 using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagResult;
 
 // How to add tactical reload states to animator:
-// 1) Create "TACTICAL RELOAD START" and "TACTICAL RELOAD" states,
+// 1) Create "TACTICAL RELOAD START", "TACTICAL RELOAD" and "TACTICAL RELOAD START FAST", "TACTICAL RELOAD FAST" states,
 // add AnimationEventsStateBehaviour component on them and configure it
 // 2) Add transitions:
 // - "IDLE" -> "TACTICAL RELOAD START" (use "IDLE" -> "RELOAD START" as an example)
+// - "IDLE" -> "TACTICAL RELOAD START FAST" (use "IDLE" -> "RELOAD OUT ALL" as an example)
 // Tip: Use "Copy Transition Parameters" and "Paste Both"
 // - "TACTICAL RELOAD START" -> "TACTICAL RELOAD" (use "RELOAD PROGRESSIVE" -> "RELOAD ADMIN" as an exmaple if they exist)
+// - "TACTICAL RELOAD START FAST" -> "TACTICAL RELOAD FAST" (use "RELOAD PROGRESSIVE" -> "RELOAD HIT" as an exmaple if they exist)
 // - "TACTICAL RELOAD" -> various reload end variants, look at "RELOAD IN" for example
+// - "TACTICAL RELOAD FAST" -> various reload end variants, look at "RELOAD IN" for example
 // Tip: Use AnimatorTransitionCopierWindow tool via "Custom Windows/7Bpencil/Animator Transition Copier"
 // Tip: Remove RELOAD IN DISABLED, its unused anyway and has potential to ruin things
 // Tip: Dont forget to set "SpeedReload" parameter on state
@@ -207,11 +210,6 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		{
 			return;
 		}
-		// TODO we dont support quick reloads for now
-		if (reloadExternalMagResult.QuickReload)
-		{
-			return;
-		}
 		if (!Plugin.Instance.WeaponInstances.TryGetValue(__instance.Controller._weaponPrefab, out var weaponInstanceData))
 		{
 			return;
@@ -336,10 +334,12 @@ public class Patch_ReloadExternalMagOperation_UseSecondMagForReload : ModulePatc
 		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+			if (__instance.ReloadExternalMagResult.RemoveOldMagResult != null)
+			{
+				__instance.DropMod(__instance.ReloadExternalMagResult.RemoveOldMagResult.Item, EWeaponModType.mod_magazine);
+			}
 			AssetPoolObject.ReturnToPool(reload.OldMagView.gameObject);
 			reload.OldMagView = null;
-			// TODO spawn dropped mag?
-
 			return false;
 		}
 		return true;
