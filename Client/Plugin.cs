@@ -41,7 +41,6 @@ using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagRe
 // UseSecondMagForReload -> UseSecondMagForReload
 // MagIn   -> OnMagInsertedToWeapon
 
-// TODO make separate trigger or parameter for tactical reload to not deal with RelTypeOld and RelTypeNew float comparison bullshit
 // TODO in inventory reload (from "INV TO RELOAD" state)
 
 namespace SevenBoldPencil.TacticalReload;
