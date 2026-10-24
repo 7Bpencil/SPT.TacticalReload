@@ -128,22 +128,39 @@ public class Plugin : BaseUnityPlugin
 		}
 
         var assemblyDir = Path.GetDirectoryName(assemblyPath);
-		var bundlePath = Path.Combine(assemblyDir, "data", "7b_ak74m.bundle");
-		var bundle = AssetBundle.LoadFromFile(bundlePath);
 		Weapons = new();
-		Weapons["weapon_izhmash_ak74m_545x39.generated(Clone)"] = new()
 		{
-			Bundle = bundle,
-			AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_izhmash_ak74m_545x39_container/Content/Weapons/ak74m/weapon_izhmash_ak74m_545x39.controller"),
-			SupportedMags =
-			[
-				0, // 20rd/30rd standard mags
-				1, // 45rd mags, had to add it, because 6L26 (black one) has anim index 0 for some reason
-				4, // 30rd ak-12 mags
-			],
-			HasReloadTacticalFast = true,
-			CanTacticalReloadWhileFolded = false,
-		};
+			var bundlePath = Path.Combine(assemblyDir, "data", "7b_ak74m.bundle");
+			var bundle = AssetBundle.LoadFromFile(bundlePath);
+			Weapons["weapon_izhmash_ak74m_545x39.generated(Clone)"] = new()
+			{
+				Bundle = bundle,
+				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_izhmash_ak74m_545x39_container/Content/Weapons/ak74m/weapon_izhmash_ak74m_545x39.controller"),
+				SupportedMags =
+				[
+					0, // 20rd/30rd standard mags
+					1, // 45rd mags, had to add it, because 6L26 (black one) has anim index 0 for some reason
+					4, // 30rd ak-12 mags
+				],
+				HasReloadTacticalFast = true,
+				CanTacticalReloadWhileFolded = false,
+			};
+		}
+		{
+			var bundlePath = Path.Combine(assemblyDir, "data", "7b_m4a1.bundle");
+			var bundle = AssetBundle.LoadFromFile(bundlePath);
+			Weapons["M4A1(Clone)"] = new()
+			{
+				Bundle = bundle,
+				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_colt_m4a1_556x45_container 1/AnimatorController/weapon_colt_m4a1_556x45.controller"),
+				SupportedMags =
+				[
+					0, // 30rd standard mags
+				],
+				HasReloadTacticalFast = false,
+				CanTacticalReloadWhileFolded = false,
+			};
+		}
 		WeaponInstances = new();
 		Reloads = new();
 	}
