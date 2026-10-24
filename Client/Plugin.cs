@@ -102,6 +102,7 @@ public class Plugin : BaseUnityPlugin
 		RegisterPatch(new Patch_AssetPoolObject_OnDestroy());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Reset());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Start());
+		RegisterPatch(new Patch_FirearmsAnimator_Reload());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagPuttedToRig());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagAppeared());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_UseSecondMagForReload());
@@ -231,6 +232,39 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
    	public static bool IsMagPairCompatible(int oldMag, int newMag)
 	{
 		return oldMag == 0 && newMag == 0;
+	}
+}
+
+public class Patch_FirearmsAnimator_Reload : ModulePatch
+{
+	public static readonly int TRIGGER_RELOAD_TACTICAL = Animator.StringToHash("ReloadTactical");
+	public static readonly int TRIGGER_RELOAD_TACTICAL_FAST = Animator.StringToHash("ReloadTacticalFast");
+
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(FirearmsAnimator), nameof(FirearmsAnimator.Reload), [typeof(int), typeof(int), typeof(bool)]);
+    }
+
+    [PatchPrefix]
+    public static bool Prefix(FirearmsAnimator __instance, int currentMagType, int nextMagType, bool isFast)
+	{
+		// copypaste of original method with our own triggers
+		if (Plugin.Instance.Reloads.TryGetValue(__instance, out var reloadData))
+		{
+			__instance.SetMagTypeCurrent(currentMagType);
+			__instance.SetMagTypeNew(nextMagType);
+			__instance.ResetLeftHand();
+			if (isFast)
+			{
+				__instance.Animator.SetTrigger(TRIGGER_RELOAD_TACTICAL_FAST);
+			}
+			else
+			{
+				__instance.Animator.SetTrigger(TRIGGER_RELOAD_TACTICAL);
+			}
+			return false;
+		}
+		return true;
 	}
 }
 
