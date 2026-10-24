@@ -11,6 +11,7 @@ using Comfort.Common;
 using EFT.AssetsManager;
 using EFT.InventoryLogic;
 using HarmonyLib;
+using SevenBoldPencil.Common;
 using SPT.Reflection.Patching;
 using System;
 using System.IO;
@@ -51,6 +52,7 @@ public class WeaponData : IDisposable
 	public RuntimeAnimatorController AnimatorController;
 	public int[] SupportedMags;
 	public bool HasReloadTacticalFast;
+	public bool CanTacticalReloadWhileFolded;
 
 	public void Dispose()
 	{
@@ -140,6 +142,7 @@ public class Plugin : BaseUnityPlugin
 				4, // 30rd ak-12 mags
 			],
 			HasReloadTacticalFast = true,
+			CanTacticalReloadWhileFolded = false,
 		};
 		WeaponInstances = new();
 		Reloads = new();
@@ -218,17 +221,27 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		{
 			return;
 		}
-		if (!Plugin.Instance.WeaponInstances.TryGetValue(__instance.Controller._weaponPrefab, out var weaponInstanceData))
+
+		var weaponPrefab = __instance.Controller._weaponPrefab;
+		if (!Plugin.Instance.WeaponInstances.TryGetValue(weaponPrefab, out var weaponInstanceData))
 		{
 			return;
 		}
-		if (reloadExternalMagResult.QuickReload && !weaponInstanceData.Data.HasReloadTacticalFast)
+
+		var weaponData = weaponInstanceData.Data;
+		if (reloadExternalMagResult.QuickReload && !weaponData.HasReloadTacticalFast)
 		{
 			return;
 		}
-		if (!IsMagPairCompatible(weaponInstanceData.Data.SupportedMags,
+		if (!IsMagPairCompatible(weaponData.SupportedMags,
 			reloadExternalMagResult.OldMagazine.magAnimationIndex,
 			reloadExternalMagResult.NextMagazine.magAnimationIndex))
+		{
+			return;
+		}
+
+		var weapon = new WeaponPrefab_Proxy(weaponPrefab)._weaponData;
+		if (weapon.Folded && !weaponData.CanTacticalReloadWhileFolded)
 		{
 			return;
 		}
@@ -459,6 +472,15 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
 			Logger.LogWarning($"Patch_AssetPoolObject_OnDestroy: {weaponPrefab.gameObject.name} {weaponPrefab.gameObject.GetInstanceID()}|{weaponPrefab._objectInstance.GetInstanceID()}");
 		}
 	}
+}
+
+public struct WeaponPrefab_Proxy(WeaponPrefab instance)
+{
+    private readonly WeaponPrefab __instance = instance;
+
+	private static TypedFieldInfo<WeaponPrefab, Weapon> __weaponData = new("_weaponData");
+
+	public Weapon _weaponData { get { return __weaponData.Get(__instance); } set { __weaponData.Set(__instance, value); } }
 }
 
 #if DEBUG
