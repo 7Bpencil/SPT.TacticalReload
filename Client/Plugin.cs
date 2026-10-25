@@ -139,7 +139,6 @@ public class Plugin : BaseUnityPlugin
 				SupportedMags =
 				[
 					0, // 20rd/30rd standard mags
-					1, // 45rd mags, had to add it, because 6L26 (black one) has anim index 0 for some reason
 					4, // 30rd ak-12 mags
 				],
 				HasReloadTacticalFast = true,
@@ -250,9 +249,7 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		{
 			return;
 		}
-		if (!IsMagPairCompatible(weaponData.SupportedMags,
-			reloadExternalMagResult.OldMagazine.magAnimationIndex,
-			reloadExternalMagResult.NextMagazine.magAnimationIndex))
+		if (!IsMagPairCompatible(reloadExternalMagResult.OldMagazine, reloadExternalMagResult.NextMagazine, weaponData.SupportedMags))
 		{
 			return;
 		}
@@ -269,10 +266,14 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 		});
 	}
 
-   	public static bool IsMagPairCompatible(int[] supportedMags, int oldMag, int newMag)
+   	public static bool IsMagPairCompatible(Magazine oldMag, Magazine newMag, int[] supportedMags)
 	{
-		return Array.IndexOf(supportedMags, oldMag) != -1 &&
-		       Array.IndexOf(supportedMags, newMag) != -1;
+		// when mags have the same size we can be 100% sure they get swapped inplace,
+		// also both mags should be of supported type
+		return oldMag.Width == newMag.Width &&
+			   oldMag.Height == newMag.Height &&
+		       Array.IndexOf(supportedMags, oldMag.magAnimationIndex) != -1 &&
+		       Array.IndexOf(supportedMags, newMag.magAnimationIndex) != -1;
 	}
 }
 
