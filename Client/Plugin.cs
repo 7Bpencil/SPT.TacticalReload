@@ -43,6 +43,16 @@ using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagRe
 // MagIn   -> OnMagInsertedToWeapon
 
 // TODO in inventory reload (from "INV TO RELOAD" state)
+// TODO they are still not "inplace" in inventory
+// how are we gonna do it?
+// - ride on "Mag Retention Reload" by Tosox
+// - disable RetentionRules.IsRetaining if weapon or mags are wrong (put weapon template id into config)
+// - tactical reload is slower, so would be good to run it only when theres no space in rig
+// - we still dont know if mags were swapped in place or there was free space (maybe can I just compare mag addresses?)
+// - add option to not disable other weapons, just to keep it visual?
+// TODO potential settings:
+// - always use tactical reload (by default only when rig is full)
+// - min mastery level
 
 namespace SevenBoldPencil.TacticalReload;
 
@@ -50,9 +60,11 @@ public class WeaponData : IDisposable
 {
 	public AssetBundle Bundle;
 	public RuntimeAnimatorController AnimatorController;
+	public string OriginalMagBonePath;
+	public string ExtraMagBoneName;
 	public int[] SupportedMags;
-	public bool HasReloadTacticalFast;
-	public bool CanTacticalReloadWhileFolded;
+	public bool HasReloadTacticalFast; // AK has fast version of tactical reload, M4 doesnt
+	public bool CanTacticalReloadWhileFolded; // AK cannot tactical reload if stock is folded
 
 	public void Dispose()
 	{
@@ -63,6 +75,7 @@ public class WeaponData : IDisposable
 public class WeaponInstanceData : IDisposable
 {
 	public WeaponData Data;
+	public Transform ExtraMagBone;
 
 	public void Dispose()
 	{
@@ -72,6 +85,7 @@ public class WeaponInstanceData : IDisposable
 
 public class ReloadData
 {
+	public WeaponInstanceData WeaponInstanceData;
 	public ReloadExternalMagOperation Operation;
 	public Item OldMagItem;
 	public Transform OldMagView;
@@ -80,6 +94,7 @@ public class ReloadData
 }
 
 [BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
+[BepInDependency("com.wtt.contentbackport", BepInDependency.DependencyFlags.HardDependency)]
 public class Plugin : BaseUnityPlugin
 {
 	public static Plugin Instance;
@@ -88,9 +103,9 @@ public class Plugin : BaseUnityPlugin
 
 	public List<ModulePatch> Patches;
 
-	public Dictionary<string, WeaponData> Weapons;
-	public Dictionary<WeaponPrefab, WeaponInstanceData> WeaponInstances;
-	public Dictionary<FirearmsAnimator, ReloadData> Reloads;
+	public Dictionary<string, WeaponData> Weapons = new();
+	public Dictionary<WeaponPrefab, WeaponInstanceData> WeaponInstances = new();
+	public Dictionary<FirearmsAnimator, ReloadData> Reloads = new();
 
     private void Awake()
 	{
@@ -128,14 +143,18 @@ public class Plugin : BaseUnityPlugin
 		}
 
         var assemblyDir = Path.GetDirectoryName(assemblyPath);
-		Weapons = new();
 		{
-			var bundlePath = Path.Combine(assemblyDir, "data", "7b_ak74m.bundle");
+			var bundleName = "7b_ak74m.bundle";
+			var controllerPath = "Assets/BundleDumps/weapon_izhmash_ak74m_545x39_container/Content/Weapons/ak74m/weapon_izhmash_ak74m_545x39.controller";
+			var prefabName = "weapon_izhmash_ak74m_545x39.generated";
+			var bundlePath = Path.Combine(assemblyDir, "data", bundleName);
 			var bundle = AssetBundle.LoadFromFile(bundlePath);
-			Weapons["weapon_izhmash_ak74m_545x39.generated(Clone)"] = new()
+			Weapons[prefabName + "(Clone)"] = new()
 			{
 				Bundle = bundle,
-				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_izhmash_ak74m_545x39_container/Content/Weapons/ak74m/weapon_izhmash_ak74m_545x39.controller"),
+				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>(controllerPath),
+				OriginalMagBonePath = "Weapon_root/Weapon_root_anim/weapon/mod_magazine",
+				ExtraMagBoneName = "mod_magazine_new",
 				SupportedMags =
 				[
 					0, // 20rd/30rd standard mags
@@ -146,12 +165,17 @@ public class Plugin : BaseUnityPlugin
 			};
 		}
 		{
-			var bundlePath = Path.Combine(assemblyDir, "data", "7b_m4a1.bundle");
+			var bundleName = "7b_m4a1.bundle";
+			var controllerPath = "Assets/BundleDumps/weapon_colt_m4a1_556x45_container 1/AnimatorController/weapon_colt_m4a1_556x45.controller";
+			var prefabName = "M4A1";
+			var bundlePath = Path.Combine(assemblyDir, "data", bundleName);
 			var bundle = AssetBundle.LoadFromFile(bundlePath);
-			Weapons["M4A1(Clone)"] = new()
+			Weapons[prefabName + "(Clone)"] = new()
 			{
 				Bundle = bundle,
-				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>("Assets/BundleDumps/weapon_colt_m4a1_556x45_container 1/AnimatorController/weapon_colt_m4a1_556x45.controller"),
+				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>(controllerPath),
+				OriginalMagBonePath = "Weapon_root/Weapon_root_anim/weapon/mod_magazine",
+				ExtraMagBoneName = "mod_magazine_new",
 				SupportedMags =
 				[
 					0, // 30rd standard mags
@@ -160,8 +184,6 @@ public class Plugin : BaseUnityPlugin
 				CanTacticalReloadWhileFolded = false,
 			};
 		}
-		WeaponInstances = new();
-		Reloads = new();
 	}
 
 	public void RegisterPatch(ModulePatch patch)
@@ -262,6 +284,7 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 
 		Plugin.Instance.Reloads.Add(__instance.FirearmsAnimator, new()
 		{
+			WeaponInstanceData = weaponInstanceData,
 			Operation = __instance,
 		});
 	}
@@ -377,7 +400,7 @@ public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
 			var viewSlot =  __instance.Firearms.ContainerCollectionView.GetViewForSlot(slot);
 			var newMagView = viewSlot.ItemView;
 			var oldBone = viewSlot.Bone;
-			var newBone = oldBone.parent.Find("mod_magazine_new"); // TODO if not here, create it, also cache for future use
+			var newBone = reload.WeaponInstanceData.ExtraMagBone;
 			newMagView.SetParent(newBone, false);
 
 			reload.NewMagView = newMagView;
@@ -458,17 +481,52 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 		// but theres no Weapon to check what template id this weapon has...
 		// weapon object name looks unique, but probably not
 
-		if (__instance._objectInstance && !____cacheInternalObjectsBeenCalled &&
-			Plugin.Instance.Weapons.TryGetValue(__instance._objectInstance.name, out var weaponData))
+		if (____cacheInternalObjectsBeenCalled)
+		{
+			// if true, this weapon has already been patched
+			return;
+		}
+		if (!__instance._objectInstance)
+		{
+			return;
+		}
+
+		if (Plugin.Instance.Weapons.TryGetValue(__instance._objectInstance.name, out var weaponData))
 		{
 			var animator = __instance._objectInstance.GetComponent<Animator>();
 			animator.runtimeAnimatorController = weaponData.AnimatorController;
+
+			var bonesRoot = __instance._objectInstance.transform;
+			var originalMagBone = bonesRoot.Find(weaponData.OriginalMagBonePath);
+			var magBonesParent = originalMagBone.parent;
+			var extraMagBone = GetOrCreateExtraBone(weaponData.ExtraMagBoneName, magBonesParent, originalMagBone);
+
 			Plugin.Instance.WeaponInstances.Add(__instance, new()
 			{
 				Data = weaponData,
+				ExtraMagBone = extraMagBone,
 			});
 
 			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance._objectInstance.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
+		}
+	}
+
+	public static Transform GetOrCreateExtraBone(string boneName, Transform boneParent, Transform originalBone)
+	{
+		var boneTransform = boneParent.Find(boneName);
+		if (boneTransform)
+		{
+			return boneTransform;
+		}
+		else
+		{
+			var extraBone = new GameObject(boneName);
+			var extraBoneTransform = extraBone.transform;
+			extraBoneTransform.parent = boneParent;
+			extraBoneTransform.localPosition = originalBone.localPosition;
+			extraBoneTransform.localRotation = originalBone.localRotation;
+			extraBoneTransform.localScale = originalBone.localScale;
+			return extraBoneTransform;
 		}
 	}
 }
@@ -483,8 +541,11 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
     [PatchPrefix]
     public static void Prefix(AssetPoolObject __instance)
 	{
-		if (__instance is WeaponPrefab weaponPrefab &&
-			Plugin.Instance.WeaponInstances.Remove(weaponPrefab, out var weaponInstanceData))
+		if (__instance is not WeaponPrefab weaponPrefab)
+		{
+			return;
+		}
+		if (Plugin.Instance.WeaponInstances.Remove(weaponPrefab, out var weaponInstanceData))
 		{
 			weaponInstanceData.Dispose();
 			Logger.LogWarning($"Patch_AssetPoolObject_OnDestroy: {weaponPrefab.gameObject.name} {weaponPrefab.gameObject.GetInstanceID()}|{weaponPrefab._objectInstance.GetInstanceID()}");
