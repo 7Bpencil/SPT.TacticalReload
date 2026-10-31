@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using ReloadExternalMagOperation = EFT.Player.FirearmController.ReloadExternalMagOperation;
 using ReloadExternalMagResult = EFT.Player.FirearmController.ReloadExternalMagResult;
+using ReloadInternalMagOperation = EFT.Player.FirearmController.ReloadInternalMagOperation;
 
 // How to add tactical reload states to animator:
 // 1) Create states "TACTICAL RELOAD START", "TACTICAL RELOAD" and "TACTICAL RELOAD START FAST", "TACTICAL RELOAD FAST",
@@ -98,6 +99,40 @@ public class WeaponReloadData : IDisposable
 	}
 }
 
+public class ShotgunData : IDisposable
+{
+	public AssetBundle Bundle;
+	public RuntimeAnimatorController AnimatorController;
+	public string OriginalPatronBonePath;
+	public string[] ExtraPatronBoneNames;
+
+	public void Dispose()
+	{
+		Bundle.Unload(false);
+	}
+}
+
+public class ShotgunInstanceData : IDisposable
+{
+	public ShotgunData Data;
+
+	public void Dispose()
+	{
+
+	}
+}
+
+public class ShotgunReloadData : IDisposable
+{
+	public ShotgunInstanceData ShotgunInstanceData;
+	public ReloadInternalMagOperation Operation;
+
+	public void Dispose()
+	{
+
+	}
+}
+
 [BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
 [BepInDependency("com.wtt.contentbackport", BepInDependency.DependencyFlags.HardDependency)]
 public class Plugin : BaseUnityPlugin
@@ -111,6 +146,10 @@ public class Plugin : BaseUnityPlugin
 	public Dictionary<string, WeaponData> Weapons = new();
 	public Dictionary<WeaponPrefab, WeaponInstanceData> WeaponInstances = new();
 	public Dictionary<FirearmsAnimator, WeaponReloadData> WeaponReloads = new();
+
+	public Dictionary<string, ShotgunData> Shotguns = new();
+	public Dictionary<WeaponPrefab, ShotgunInstanceData> ShotgunInstances = new();
+	public Dictionary<FirearmsAnimator, ShotgunReloadData> ShotgunReloads = new();
 
     private void Awake()
 	{
@@ -130,6 +169,10 @@ public class Plugin : BaseUnityPlugin
 		RegisterPatch(new Patch_ReloadExternalMagOperation_UseSecondMagForReload());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon());
 
+		RegisterPatch(new Patch_ReloadInternalMagOperation_Reset());
+		RegisterPatch(new Patch_ReloadInternalMagOperation_Start());
+		RegisterPatch(new Patch_ReloadInternalMagOperation_OnShowAmmo());
+
 #if DEBUG
 		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)));
 		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]));
@@ -138,6 +181,11 @@ public class Plugin : BaseUnityPlugin
 		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)));
 		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)));
 		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)));
+
+		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Reset)));
+		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Start), [typeof(AmmoPack), typeof(Callback)]));
+		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnAddAmmoInChamber)));
+		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.AddAmmoToMag)));
 #endif
 
 		var assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -189,6 +237,26 @@ public class Plugin : BaseUnityPlugin
 				CanTacticalReloadWhileFolded = false,
 			};
 		}
+		{
+			var bundleName = "7b_benelli.bundle";
+			var controllerPath = "Assets/BundleDumps/weapon_benelli_m3_s90_12g_container/Content/Weapons/m3s90/weapon_benelli_m3_s90_12g.controller";
+			var prefabName = "weapon_benelli_m3_s90_12g_model.generated";
+			var bundlePath = Path.Combine(assemblyDir, "data", bundleName);
+			var bundle = AssetBundle.LoadFromFile(bundlePath);
+			Shotguns[prefabName + "(Clone)"] = new()
+			{
+				Bundle = bundle,
+				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>(controllerPath),
+				OriginalPatronBonePath = "Weapon_root/Weapon_root_anim/weapon/patron_in_weapon",
+				ExtraPatronBoneNames =
+				[
+					"patron_in_weapon_002",
+					"patron_in_weapon_003",
+					"patron_in_weapon_004",
+					"patron_in_weapon_005",
+				]
+			};
+		}
 	}
 
 	public void RegisterPatch(ModulePatch patch)
@@ -221,6 +289,14 @@ public class Plugin : BaseUnityPlugin
 	}
 
 	public void AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
+	{
+		if (a != b)
+		{
+			Logger.LogError($"Reload operations not equal!");
+		}
+	}
+
+	public void AssertEqual(ReloadInternalMagOperation a, ReloadInternalMagOperation b)
 	{
 		if (a != b)
 		{
@@ -472,6 +548,78 @@ public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatc
 	}
 }
 
+public class Patch_ReloadInternalMagOperation_Reset : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Reset));
+    }
+
+    [PatchPrefix]
+    public static void Prefix(ReloadInternalMagOperation __instance)
+	{
+		// Operations get reused when possible, so we should clean old data too
+
+		if (Plugin.Instance.ShotgunReloads.Remove(__instance.FirearmsAnimator, out var reload))
+		{
+			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+			reload.Dispose();
+		}
+	}
+}
+
+public class Patch_ReloadInternalMagOperation_Start : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Start), [typeof(AmmoPack), typeof(Callback)]);
+    }
+
+    [PatchPrefix]
+    public static void Prefix(ReloadInternalMagOperation __instance, AmmoPack ammoPack)
+	{
+		var weaponPrefab = __instance.Controller._weaponPrefab;
+		if (!Plugin.Instance.ShotgunInstances.TryGetValue(weaponPrefab, out var shotgunInstanceData))
+		{
+			return;
+		}
+
+		// Logger.LogWarning(ammoPack.ToString());
+
+		Plugin.Instance.ShotgunReloads.Add(__instance.FirearmsAnimator, new()
+		{
+			ShotgunInstanceData = shotgunInstanceData,
+			Operation = __instance,
+		});
+	}
+}
+
+public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnShowAmmo));
+    }
+
+    [PatchPrefix]
+    public static void Prefix(ReloadInternalMagOperation __instance)
+	{
+		// Note, BSG shotgun reload animation always uses the same model of shotgun shell
+		// during reload - with which it started, because animation is looped and theres
+		// no animation events to switch shell model.
+		// So we have to do it ourselves by adding OnShowAmmo event
+		// and switching shell model to the next one on it
+
+		if (Plugin.Instance.ShotgunReloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		{
+			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+
+			var nextAmmo = __instance._ammoPack.GetAmmoToReload(__instance.AmmoToLoadIntoMag);
+			__instance.Firearms.SetRoundIntoWeapon(nextAmmo, 0);
+		}
+	}
+}
+
 public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 {
     protected override MethodBase GetTargetMethod()
@@ -510,6 +658,30 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 			{
 				Data = weaponData,
 				ExtraMagBone = extraMagBone,
+			});
+
+			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance._objectInstance.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
+		}
+		if (Plugin.Instance.Shotguns.TryGetValue(__instance._objectInstance.name, out var shotgunData))
+		{
+			var animator = __instance._objectInstance.GetComponent<Animator>();
+			animator.runtimeAnimatorController = shotgunData.AnimatorController;
+
+			var bonesRoot = __instance._objectInstance.transform;
+			var originalPatronBone = bonesRoot.Find(shotgunData.OriginalPatronBonePath);
+			var patronBonesParent = originalPatronBone.parent;
+
+			// note: we dont need to cache patron bones because EFT.Firarms class
+			// already does this for us with _patronInWeaponTransforms
+
+			foreach (var boneName in shotgunData.ExtraPatronBoneNames)
+			{
+				GetOrCreateExtraBone(boneName, patronBonesParent, originalPatronBone);
+			}
+
+			Plugin.Instance.ShotgunInstances.Add(__instance, new()
+			{
+				Data = shotgunData,
 			});
 
 			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance._objectInstance.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
@@ -553,6 +725,11 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
 		if (Plugin.Instance.WeaponInstances.Remove(weaponPrefab, out var weaponInstanceData))
 		{
 			weaponInstanceData.Dispose();
+			Logger.LogWarning($"Patch_AssetPoolObject_OnDestroy: {weaponPrefab.gameObject.name} {weaponPrefab.gameObject.GetInstanceID()}|{weaponPrefab._objectInstance.GetInstanceID()}");
+		}
+		if (Plugin.Instance.ShotgunInstances.Remove(weaponPrefab, out var shotgunInstanceData))
+		{
+			shotgunInstanceData.Dispose();
 			Logger.LogWarning($"Patch_AssetPoolObject_OnDestroy: {weaponPrefab.gameObject.name} {weaponPrefab.gameObject.GetInstanceID()}|{weaponPrefab._objectInstance.GetInstanceID()}");
 		}
 	}
