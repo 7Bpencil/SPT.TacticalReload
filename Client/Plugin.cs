@@ -83,7 +83,7 @@ public class WeaponInstanceData : IDisposable
 	}
 }
 
-public class ReloadData : IDisposable
+public class WeaponReloadData : IDisposable
 {
 	public WeaponInstanceData WeaponInstanceData;
 	public ReloadExternalMagOperation Operation;
@@ -110,7 +110,7 @@ public class Plugin : BaseUnityPlugin
 
 	public Dictionary<string, WeaponData> Weapons = new();
 	public Dictionary<WeaponPrefab, WeaponInstanceData> WeaponInstances = new();
-	public Dictionary<FirearmsAnimator, ReloadData> Reloads = new();
+	public Dictionary<FirearmsAnimator, WeaponReloadData> WeaponReloads = new();
 
     private void Awake()
 	{
@@ -205,7 +205,7 @@ public class Plugin : BaseUnityPlugin
 		}
 		Patches.Clear();
 
-		Reloads.Clear();
+		WeaponReloads.Clear();
 
 		foreach (var weaponInstance in WeaponInstances.Values)
 		{
@@ -241,7 +241,7 @@ public class Patch_ReloadExternalMagOperation_Reset : ModulePatch
 	{
 		// Operations get reused when possible, so we should clean old data too
 
-		if (Plugin.Instance.Reloads.Remove(__instance.FirearmsAnimator, out var reload))
+		if (Plugin.Instance.WeaponReloads.Remove(__instance.FirearmsAnimator, out var reload))
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 			reload.Dispose();
@@ -287,7 +287,7 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 			return;
 		}
 
-		Plugin.Instance.Reloads.Add(__instance.FirearmsAnimator, new()
+		Plugin.Instance.WeaponReloads.Add(__instance.FirearmsAnimator, new()
 		{
 			WeaponInstanceData = weaponInstanceData,
 			Operation = __instance,
@@ -319,7 +319,7 @@ public class Patch_FirearmsAnimator_Reload : ModulePatch
     public static bool Prefix(FirearmsAnimator __instance, int currentMagType, int nextMagType, bool isFast)
 	{
 		// copypaste of original method with our own triggers
-		if (Plugin.Instance.Reloads.TryGetValue(__instance, out var reloadData))
+		if (Plugin.Instance.WeaponReloads.TryGetValue(__instance, out var reloadData))
 		{
 			__instance.SetMagTypeCurrent(currentMagType);
 			__instance.SetMagTypeNew(nextMagType);
@@ -355,7 +355,7 @@ public class Patch_ReloadExternalMagOperation_OnMagPuttedToRig : ModulePatch
 		// To not break anything I keep order of events the same,
 		// but do not dispawn old mag object until UseSecondMagForReload event
 
-		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		if (Plugin.Instance.WeaponReloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 
@@ -397,7 +397,7 @@ public class Patch_ReloadExternalMagOperation_OnMagAppeared : ModulePatch
 		// This event is fired when new mag first appears on the screen,
 		// usually its almost at the start of the animation
 
-		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		if (Plugin.Instance.WeaponReloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 
@@ -435,7 +435,7 @@ public class Patch_ReloadExternalMagOperation_UseSecondMagForReload : ModulePatc
 		// I time this event when old mag is offscreen and can be despawned without player noticing
 		// (or replaced with loot version in fast reload animation)
 
-		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		if (Plugin.Instance.WeaponReloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 			if (__instance.ReloadExternalMagResult.RemoveOldMagResult != null)
@@ -464,7 +464,7 @@ public class Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon : ModulePatc
 		// as ordinary magazine bone, this way snapping magazine object back to the bone game expects
 		// wont produce any weird teleporting mags.
 
-		if (Plugin.Instance.Reloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		if (Plugin.Instance.WeaponReloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 			reload.NewMagView.SetParent(reload.OldBone);
