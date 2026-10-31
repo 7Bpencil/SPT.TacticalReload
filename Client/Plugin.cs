@@ -83,7 +83,7 @@ public class WeaponInstanceData : IDisposable
 	}
 }
 
-public class ReloadData
+public class ReloadData : IDisposable
 {
 	public WeaponInstanceData WeaponInstanceData;
 	public ReloadExternalMagOperation Operation;
@@ -91,6 +91,11 @@ public class ReloadData
 	public Transform OldMagView;
 	public Transform NewMagView;
 	public Transform OldBone;
+
+	public void Dispose()
+	{
+
+	}
 }
 
 [BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
@@ -239,7 +244,7 @@ public class Patch_ReloadExternalMagOperation_Reset : ModulePatch
 		if (Plugin.Instance.Reloads.Remove(__instance.FirearmsAnimator, out var reload))
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
-			// TODO any extra cleanup?
+			reload.Dispose();
 		}
 	}
 }
