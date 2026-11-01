@@ -163,7 +163,7 @@ public class Plugin : BaseUnityPlugin
 		RegisterPatch(new Patch_AssetPoolObject_OnDestroy());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Reset());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_Start());
-		RegisterPatch(new Patch_FirearmsAnimator_Reload());
+		RegisterPatch(new Patch_FirearmsAnimator_Reload_Weapons());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagPuttedToRig());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagAppeared());
 		RegisterPatch(new Patch_ReloadExternalMagOperation_UseSecondMagForReload());
@@ -381,7 +381,7 @@ public class Patch_ReloadExternalMagOperation_Start : ModulePatch
 	}
 }
 
-public class Patch_FirearmsAnimator_Reload : ModulePatch
+public class Patch_FirearmsAnimator_Reload_Weapons : ModulePatch
 {
 	public static readonly int TRIGGER_RELOAD_TACTICAL = Animator.StringToHash("ReloadTactical");
 	public static readonly int TRIGGER_RELOAD_TACTICAL_FAST = Animator.StringToHash("ReloadTacticalFast");
