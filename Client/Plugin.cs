@@ -5,6 +5,7 @@
 // LICENSE file in the root directory of this source tree.
 //
 
+using AnimationEventSystem;
 using BepInEx;
 using BepInEx.Logging;
 using Comfort.Common;
@@ -55,7 +56,34 @@ using ReloadInternalMagOperation = EFT.Player.FirearmController.ReloadInternalMa
 // - always use tactical reload (by default only when rig is full)
 // - min mastery level
 
+// SINGLE events: anim length: 36
+// 0.02693603 0.94 Sound ShellOutRig
+// 0.2171717 7.6 Sound ShellIn (when shell comes near port)
+// 0.5785299 20.2 AddAmmoInMag
+// 0.7056451 24.6 Sound HandOff (when metal piece closes)
+
+// TWIN events: anim length: 36
+// 0.02693603 0.94 Sound ShellOutRig
+// 0.5785299 20.2 AddAmmoInMag
+// 0.7056451 24.6 Sound HandOff (when metal piece closes)
+
+// QUAD events: anim length: 61
+// 0.015 0.94 Sound ShellOutRig
+// 0.1884328 11.3 Sound ShellRattle
+// 0.3507463 21 Sound ShellIn
+// 0.5951493 35.7 Sound ShellInsert
+// 0.6921642 41.5 Sound ShellIn
+// 0.7333333 43.9 AddAmmoInMag
+// 0.81666666666 49 Sound HandOff
+
+// TODO quad loading breaks because AddAmmoInMag event comes later than
+// transition exit time, so animation goes to second loop instead of interrupting
+
 namespace SevenBoldPencil.TacticalReload;
+
+// TODO 2 ways
+// - one state with a blend tree on parameter, change parameter in code, all animation events are interleaved
+// - multiple states, but each state needs transitions in and out
 
 public class WeaponData : IDisposable
 {
@@ -105,6 +133,7 @@ public class ShotgunData : IDisposable
 	public RuntimeAnimatorController AnimatorController;
 	public string OriginalPatronBonePath;
 	public string[] ExtraPatronBoneNames;
+	public int[][] PatronIndicesPerReloadType; // note: this must be sorted in ascending order
 
 	public void Dispose()
 	{
@@ -126,6 +155,28 @@ public class ShotgunReloadData : IDisposable
 {
 	public ShotgunInstanceData ShotgunInstanceData;
 	public ReloadInternalMagOperation Operation;
+	public int NextReloadType;
+
+	public int GetNextReloadType()
+	{
+		var availableAmmoCount = Operation._ammoPack.AmmoCount;
+		var mag = Operation.Weapon.GetCurrentMagazine();
+		var magFreeSpace = mag.MaxCount - mag.Count;
+		var ammoToLoadTotal = Math.Min(magFreeSpace, availableAmmoCount);
+		var ammoToLoad = ammoToLoadTotal - Operation.AmmoToLoadIntoMag;
+		Plugin.Instance.LoggerInstance.LogWarning($"availableAmmoCount: {availableAmmoCount}, magFreeSpace: {magFreeSpace}, ammoToLoadTotal: {ammoToLoadTotal}, ammoToLoad: {ammoToLoad}");
+		var patronsPerReloadType = ShotgunInstanceData.Data.PatronIndicesPerReloadType;
+		for (var i = 0; i < patronsPerReloadType.Length; i++)
+		{
+			var reloadType = patronsPerReloadType.Length - 1 - i;
+			var patronsCount = patronsPerReloadType[reloadType].Length;
+			if (ammoToLoad >= patronsCount)
+			{
+				return reloadType;
+			}
+		}
+		return 0;
+	}
 
 	public void Dispose()
 	{
@@ -172,6 +223,7 @@ public class Plugin : BaseUnityPlugin
 		RegisterPatch(new Patch_ReloadInternalMagOperation_Reset());
 		RegisterPatch(new Patch_ReloadInternalMagOperation_Start());
 		RegisterPatch(new Patch_ReloadInternalMagOperation_OnShowAmmo());
+		RegisterPatch(new Patch_ReloadInternalMagOperation_AddAmmoToMag());
 
 #if DEBUG
 		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)));
@@ -185,7 +237,10 @@ public class Plugin : BaseUnityPlugin
 		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Reset)));
 		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Start), [typeof(AmmoPack), typeof(Callback)]));
 		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnAddAmmoInChamber)));
+		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnShowAmmo)));
 		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.AddAmmoToMag)));
+
+		RegisterPatch(new Patch_AnimationEventsEmitter_SendEvent());
 #endif
 
 		var assemblyPath = Assembly.GetExecutingAssembly().Location;
@@ -254,6 +309,12 @@ public class Plugin : BaseUnityPlugin
 					"patron_in_weapon_003",
 					"patron_in_weapon_004",
 					"patron_in_weapon_005",
+				],
+				PatronIndicesPerReloadType =
+				[
+					[0],
+					[0, 1],
+					[2, 3, 0, 1],
 				]
 			};
 		}
@@ -288,20 +349,24 @@ public class Plugin : BaseUnityPlugin
 		Weapons.Clear();
 	}
 
-	public void AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
+	public bool AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)
 	{
 		if (a != b)
 		{
 			Logger.LogError($"Reload operations not equal!");
+			return false;
 		}
+		return true;
 	}
 
-	public void AssertEqual(ReloadInternalMagOperation a, ReloadInternalMagOperation b)
+	public bool AssertEqual(ReloadInternalMagOperation a, ReloadInternalMagOperation b)
 	{
 		if (a != b)
 		{
 			Logger.LogError($"Reload operations not equal!");
+			return false;
 		}
+		return true;
 	}
 }
 
@@ -584,8 +649,6 @@ public class Patch_ReloadInternalMagOperation_Start : ModulePatch
 			return;
 		}
 
-		// Logger.LogWarning(ammoPack.ToString());
-
 		Plugin.Instance.ShotgunReloads.Add(__instance.FirearmsAnimator, new()
 		{
 			ShotgunInstanceData = shotgunInstanceData,
@@ -610,12 +673,37 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 		// So we have to do it ourselves by adding OnShowAmmo event
 		// and switching shell model to the next one on it
 
-		if (Plugin.Instance.ShotgunReloads.TryGetValue(__instance.FirearmsAnimator, out var reload))
+		// TODO we need to destroy old shell, noticable how they clip in each other
+		if (Plugin.Instance.ShotgunReloads.TryGetValue(__instance.FirearmsAnimator, out var reload) && Plugin.Instance.AssertEqual(__instance, reload.Operation))
 		{
-			Plugin.Instance.AssertEqual(__instance, reload.Operation);
+			var nextReloadType = reload.GetNextReloadType();
+			var patronIndices = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType[nextReloadType];
+			for (var i = 0; i < patronIndices.Length; i++)
+			{
+				var patronIndex = patronIndices[i];
+				var patronAmmo = __instance._ammoPack.GetAmmoToReload(__instance.AmmoToLoadIntoMag + i);
+				__instance.Firearms.SetRoundIntoWeapon(patronAmmo, patronIndex);
+			}
+			__instance.FirearmsAnimator.SetMagTypeCurrent(nextReloadType);
+			reload.NextReloadType = nextReloadType;
+		}
+	}
+}
 
-			var nextAmmo = __instance._ammoPack.GetAmmoToReload(__instance.AmmoToLoadIntoMag);
-			__instance.Firearms.SetRoundIntoWeapon(nextAmmo, 0);
+public class Patch_ReloadInternalMagOperation_AddAmmoToMag : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.AddAmmoToMag));
+    }
+
+    [PatchPrefix]
+    public static void Prefix(ReloadInternalMagOperation __instance)
+	{
+		if (Plugin.Instance.ShotgunReloads.TryGetValue(__instance.FirearmsAnimator, out var reload) && Plugin.Instance.AssertEqual(__instance, reload.Operation))
+		{
+			var patronIndices = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType[reload.NextReloadType];
+			__instance.AmmoToLoadIntoMag += patronIndices.Length - 1;
 		}
 	}
 }
@@ -731,6 +819,27 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
 		{
 			shotgunInstanceData.Dispose();
 			Logger.LogWarning($"Patch_AssetPoolObject_OnDestroy: {weaponPrefab.gameObject.name} {weaponPrefab.gameObject.GetInstanceID()}|{weaponPrefab._objectInstance.GetInstanceID()}");
+		}
+	}
+}
+
+public class Patch_AnimationEventsEmitter_SendEvent : ModulePatch
+{
+    protected override MethodBase GetTargetMethod()
+    {
+        return AccessTools.Method(typeof(AnimationEventsEmitter), nameof(AnimationEventsEmitter.SendEvent));
+    }
+
+    [PatchPrefix]
+    public static void Prefix(AnimationEventsEmitter __instance, string functionName, int functionNameHash, AnimationEventParameter parameter, int stateShortNameHash)
+	{
+		if (functionName == "Sound")
+		{
+			Logger.LogWarning($"AnimEvent: {functionName} {parameter.StringParam}");
+		}
+		else
+		{
+			Logger.LogWarning($"AnimEvent: {functionName}");
 		}
 	}
 }
