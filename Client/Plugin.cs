@@ -90,7 +90,6 @@ namespace SevenBoldPencil.TacticalReload;
 
 public class WeaponData : IDisposable
 {
-	public AssetBundle Bundle;
 	public RuntimeAnimatorController AnimatorController;
 	public string OriginalMagBonePath;
 	public string ExtraMagBoneName;
@@ -100,7 +99,7 @@ public class WeaponData : IDisposable
 
 	public void Dispose()
 	{
-		Bundle.Unload(false);
+
 	}
 }
 
@@ -132,7 +131,6 @@ public class WeaponReloadData : IDisposable
 
 public class ShotgunData : IDisposable
 {
-	public AssetBundle Bundle;
 	public RuntimeAnimatorController AnimatorController;
 	public string OriginalPatronBonePath;
 	public string[] ExtraPatronBoneNames;
@@ -140,7 +138,7 @@ public class ShotgunData : IDisposable
 
 	public void Dispose()
 	{
-		Bundle.Unload(false);
+
 	}
 }
 
@@ -195,8 +193,6 @@ public class Plugin : BaseUnityPlugin
 
 	public ManualLogSource LoggerInstance;
 
-	public List<ModulePatch> Patches;
-
 	public Dictionary<string, WeaponData> Weapons = new();
 	public Dictionary<WeaponPrefab, WeaponInstanceData> WeaponInstances = new();
 	public Dictionary<FirearmsAnimator, WeaponReloadData> WeaponReloads = new();
@@ -211,48 +207,40 @@ public class Plugin : BaseUnityPlugin
 
 		LoggerInstance = Logger;
 
-		Patches = new();
+		new Patch_WeaponPrefab_CacheInternalObjects().Enable();
+		new Patch_AssetPoolObject_OnDestroy().Enable();
+		new Patch_ReloadExternalMagOperation_Reset().Enable();
+		new Patch_ReloadExternalMagOperation_Start().Enable();
+		new Patch_FirearmsAnimator_Reload_Weapons().Enable();
+		new Patch_ReloadExternalMagOperation_OnMagPuttedToRig().Enable();
+		new Patch_ReloadExternalMagOperation_OnMagAppeared().Enable();
+		new Patch_ReloadExternalMagOperation_UseSecondMagForReload().Enable();
+		new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon().Enable();
 
-		RegisterPatch(new Patch_WeaponPrefab_CacheInternalObjects());
-		RegisterPatch(new Patch_AssetPoolObject_OnDestroy());
-		RegisterPatch(new Patch_ReloadExternalMagOperation_Reset());
-		RegisterPatch(new Patch_ReloadExternalMagOperation_Start());
-		RegisterPatch(new Patch_FirearmsAnimator_Reload_Weapons());
-		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagPuttedToRig());
-		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagAppeared());
-		RegisterPatch(new Patch_ReloadExternalMagOperation_UseSecondMagForReload());
-		RegisterPatch(new Patch_ReloadExternalMagOperation_OnMagInsertedToWeapon());
-
-		RegisterPatch(new Patch_ReloadInternalMagOperation_Reset());
-		RegisterPatch(new Patch_ReloadInternalMagOperation_Start());
-		RegisterPatch(new Patch_ReloadInternalMagOperation_OnShowAmmo());
-		RegisterPatch(new Patch_ReloadInternalMagOperation_AddAmmoToMag());
+		new Patch_ReloadInternalMagOperation_Reset().Enable();
+		new Patch_ReloadInternalMagOperation_Start().Enable();
+		new Patch_ReloadInternalMagOperation_OnShowAmmo().Enable();
+		new Patch_ReloadInternalMagOperation_AddAmmoToMag().Enable();
 
 #if DEBUG
-		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)));
-		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]));
-		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)));
-		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)));
-		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)));
-		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)));
-		RegisterPatch(new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)));
+		new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Reset)).Enable();
+		new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.Start), [typeof(ReloadExternalMagResult), typeof(Callback)]).Enable();
+		new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPulledOutFromWeapon)).Enable();
+		new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagPuttedToRig)).Enable();
+		new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagAppeared)).Enable();
+		new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.UseSecondMagForReload)).Enable();
+		new PrintDebug(typeof(ReloadExternalMagOperation), nameof(ReloadExternalMagOperation.OnMagInsertedToWeapon)).Enable();
 
-		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Reset)));
-		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Start), [typeof(AmmoPack), typeof(Callback)]));
-		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnAddAmmoInChamber)));
-		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnShowAmmo)));
-		RegisterPatch(new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.AddAmmoToMag)));
+		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Reset)).Enable();
+		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Start), [typeof(AmmoPack), typeof(Callback)]).Enable();
+		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnAddAmmoInChamber)).Enable();
+		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnShowAmmo)).Enable();
+		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.AddAmmoToMag)).Enable();
 
-		RegisterPatch(new Patch_AnimationEventsEmitter_SendEvent());
+		new Patch_AnimationEventsEmitter_SendEvent().Enable();
 #endif
 
 		var assemblyPath = Assembly.GetExecutingAssembly().Location;
-		if (string.IsNullOrWhiteSpace(assemblyPath))
-		{
-			// happens for plugins loaded from scripts folder by BepInEx.ScriptEngine
-			assemblyPath = Path.Combine(BepInEx.Paths.BepInExRootPath, "scripts", "7Bpencil.TacticalReload", "7Bpencil.TacticalReload.dll");
-		}
-
         var assemblyDir = Path.GetDirectoryName(assemblyPath);
 		{
 			var bundleName = "7b_ak74m.bundle";
@@ -262,7 +250,6 @@ public class Plugin : BaseUnityPlugin
 			var bundle = AssetBundle.LoadFromFile(bundlePath);
 			Weapons[prefabName + "(Clone)"] = new()
 			{
-				Bundle = bundle,
 				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>(controllerPath),
 				OriginalMagBonePath = "Weapon_root/Weapon_root_anim/weapon/mod_magazine",
 				ExtraMagBoneName = "mod_magazine_new",
@@ -274,6 +261,7 @@ public class Plugin : BaseUnityPlugin
 				HasReloadTacticalFast = true,
 				CanTacticalReloadWhileFolded = false,
 			};
+			bundle.Unload(false);
 		}
 		{
 			var bundleName = "7b_m4a1.bundle";
@@ -283,7 +271,6 @@ public class Plugin : BaseUnityPlugin
 			var bundle = AssetBundle.LoadFromFile(bundlePath);
 			Weapons[prefabName + "(Clone)"] = new()
 			{
-				Bundle = bundle,
 				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>(controllerPath),
 				OriginalMagBonePath = "Weapon_root/Weapon_root_anim/weapon/mod_magazine",
 				ExtraMagBoneName = "mod_magazine_new",
@@ -294,6 +281,7 @@ public class Plugin : BaseUnityPlugin
 				HasReloadTacticalFast = false,
 				CanTacticalReloadWhileFolded = false,
 			};
+			bundle.Unload(false);
 		}
 		{
 			var bundleName = "7b_benelli.bundle";
@@ -303,7 +291,6 @@ public class Plugin : BaseUnityPlugin
 			var bundle = AssetBundle.LoadFromFile(bundlePath);
 			Shotguns[prefabName + "(Clone)"] = new()
 			{
-				Bundle = bundle,
 				AnimatorController = bundle.LoadAsset<RuntimeAnimatorController>(controllerPath),
 				OriginalPatronBonePath = "Weapon_root/Weapon_root_anim/weapon/patron_in_weapon",
 				ExtraPatronBoneNames =
@@ -320,36 +307,8 @@ public class Plugin : BaseUnityPlugin
 					[2, 3, 0, 1],
 				]
 			};
+			bundle.Unload(false);
 		}
-	}
-
-	public void RegisterPatch(ModulePatch patch)
-	{
-		patch.Enable();
-		Patches.Add(patch);
-	}
-
-	private void OnDestroy()
-	{
-		foreach (var patch in Patches)
-		{
-			patch.Disable();
-		}
-		Patches.Clear();
-
-		WeaponReloads.Clear();
-
-		foreach (var weaponInstance in WeaponInstances.Values)
-		{
-			weaponInstance.Dispose();
-		}
-		WeaponInstances.Clear();
-
-		foreach (var weapon in Weapons.Values)
-		{
-			weapon.Dispose();
-		}
-		Weapons.Clear();
 	}
 
 	public bool AssertEqual(ReloadExternalMagOperation a, ReloadExternalMagOperation b)

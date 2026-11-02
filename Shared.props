@@ -15,7 +15,6 @@
   <Target Name="CopyToSPT" AfterTargets="AfterBuild">
     <Exec Command="mkdir &quot;$(OutPath)&quot;" ContinueOnError="true" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(OutPath)" />
-    <Copy SourceFiles="@(_DebugSymbolsIntermediatePath)" DestinationFolder="$(OutPath)" />
   </Target>
 
   <Target Name="CopyToStage" AfterTargets="AfterBuild" Condition="'$(Configuration)'=='Release'">
