@@ -29,20 +29,14 @@ public class ShotgunData : IDisposable
 	public string[] ExtraPatronBoneNames;
 	public int[][] PatronIndicesPerReloadType; // note: this must be sorted in ascending order
 
-	public void Dispose()
-	{
-
-	}
+	public void Dispose() { }
 }
 
 public class ShotgunInstanceData : IDisposable
 {
 	public ShotgunData Data;
 
-	public void Dispose()
-	{
-
-	}
+	public void Dispose() {	}
 }
 
 public class ShotgunReloadData : IDisposable
@@ -51,30 +45,7 @@ public class ShotgunReloadData : IDisposable
 	public ReloadInternalMagOperation Operation;
 	public int NextReloadType;
 
-	public int GetNextReloadType()
-	{
-		var availableAmmoCount = Operation._ammoPack.AmmoCount;
-		var mag = Operation.Weapon.GetCurrentMagazine();
-		var magFreeSpace = mag.MaxCount - mag.Count;
-		var ammoToLoadTotal = Math.Min(magFreeSpace, availableAmmoCount);
-		var ammoToLoad = ammoToLoadTotal - Operation.AmmoToLoadIntoMag;
-		var patronsPerReloadType = ShotgunInstanceData.Data.PatronIndicesPerReloadType;
-		for (var i = 0; i < patronsPerReloadType.Length; i++)
-		{
-			var reloadType = patronsPerReloadType.Length - 1 - i;
-			var patronsCount = patronsPerReloadType[reloadType].Length;
-			if (ammoToLoad >= patronsCount)
-			{
-				return reloadType;
-			}
-		}
-		return 0;
-	}
-
-	public void Dispose()
-	{
-
-	}
+	public void Dispose() {	}
 }
 
 [BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
@@ -206,8 +177,9 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 		// TODO we need to destroy old shell, noticable how they clip in each other
 		if (Plugin.Instance.ShotgunReloads.TryGetValue(__instance.FirearmsAnimator, out var reload) && Plugin.Instance.AssertEqual(__instance, reload.Operation))
 		{
-			var nextReloadType = reload.GetNextReloadType();
-			var patronIndices = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType[nextReloadType];
+			var patronIndicesPerReloadType = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType;
+			var nextReloadType = GetNextReloadType(__instance, patronIndicesPerReloadType);
+			var patronIndices = patronIndicesPerReloadType[nextReloadType];
 			for (var i = 0; i < patronIndices.Length; i++)
 			{
 				var patronIndex = patronIndices[i];
@@ -217,6 +189,25 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 			__instance.FirearmsAnimator.SetMagTypeCurrent(nextReloadType);
 			reload.NextReloadType = nextReloadType;
 		}
+	}
+
+	public static int GetNextReloadType(ReloadInternalMagOperation operation, int[][] patronIndicesPerReloadType)
+	{
+		var availableAmmoCount = operation._ammoPack.AmmoCount;
+		var mag = operation.Weapon.GetCurrentMagazine();
+		var magFreeSpace = mag.MaxCount - mag.Count;
+		var ammoToLoadTotal = Math.Min(magFreeSpace, availableAmmoCount);
+		var ammoToLoad = ammoToLoadTotal - operation.AmmoToLoadIntoMag;
+		for (var i = 0; i < patronIndicesPerReloadType.Length; i++)
+		{
+			var reloadType = patronIndicesPerReloadType.Length - 1 - i;
+			var patronsCount = patronIndicesPerReloadType[reloadType].Length;
+			if (ammoToLoad >= patronsCount)
+			{
+				return reloadType;
+			}
+		}
+		return 0;
 	}
 }
 
@@ -271,9 +262,6 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 			var originalPatronBone = bonesRoot.Find(shotgunData.OriginalPatronBonePath);
 			var patronBonesParent = originalPatronBone.parent;
 
-			// note: we dont need to cache patron bones because EFT.Firarms class
-			// already does this for us with _patronInWeaponTransforms
-
 			foreach (var boneName in shotgunData.ExtraPatronBoneNames)
 			{
 				GetOrCreateExtraBone(boneName, patronBonesParent, originalPatronBone);
@@ -283,7 +271,6 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 			{
 				Data = shotgunData,
 			});
-
 		}
 	}
 
@@ -327,5 +314,3 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
 		}
 	}
 }
-
-
