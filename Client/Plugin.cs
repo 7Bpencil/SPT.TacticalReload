@@ -59,7 +59,6 @@ public class ShotgunReloadData : IDisposable
 		var magFreeSpace = mag.MaxCount - mag.Count;
 		var ammoToLoadTotal = Math.Min(magFreeSpace, availableAmmoCount);
 		var ammoToLoad = ammoToLoadTotal - Operation.AmmoToLoadIntoMag;
-		Plugin.Instance.LoggerInstance.LogWarning($"availableAmmoCount: {availableAmmoCount}, magFreeSpace: {magFreeSpace}, ammoToLoadTotal: {ammoToLoadTotal}, ammoLoaded: {Operation.AmmoToLoadIntoMag}, ammoToLoad: {ammoToLoad}");
 		var patronsPerReloadType = ShotgunInstanceData.Data.PatronIndicesPerReloadType;
 		for (var i = 0; i < patronsPerReloadType.Length; i++)
 		{
@@ -171,11 +170,6 @@ public class Patch_ReloadInternalMagOperation_Reset : ModulePatch
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 			reload.Dispose();
-			Logger.LogWarning($"Patch_ReloadInternalMagOperation_Reset: Cleaned reload operation");
-		}
-		else
-		{
-			Logger.LogError($"Patch_ReloadInternalMagOperation_Reset: Unknown reload operation?");
 		}
 	}
 }
@@ -193,7 +187,6 @@ public class Patch_ReloadInternalMagOperation_Start : ModulePatch
 		var weaponPrefab = __instance.Controller._weaponPrefab;
 		if (!Plugin.Instance.ShotgunInstances.TryGetValue(weaponPrefab, out var shotgunInstanceData))
 		{
-			Logger.LogError($"Patch_ReloadInternalMagOperation_Start: Unknown weapon?");
 			return;
 		}
 
@@ -202,7 +195,6 @@ public class Patch_ReloadInternalMagOperation_Start : ModulePatch
 			ShotgunInstanceData = shotgunInstanceData,
 			Operation = __instance,
 		});
-		Logger.LogWarning($"Patch_ReloadInternalMagOperation_Start");
 	}
 }
 
@@ -235,11 +227,6 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 			}
 			__instance.FirearmsAnimator.SetMagTypeCurrent(nextReloadType);
 			reload.NextReloadType = nextReloadType;
-			Logger.LogWarning($"Patch_ReloadInternalMagOperation_OnShowAmmo");
-		}
-		else
-		{
-			Logger.LogError($"Patch_ReloadInternalMagOperation_OnShowAmmo: Unknown reload operation?");
 		}
 	}
 }
@@ -258,11 +245,6 @@ public class Patch_ReloadInternalMagOperation_AddAmmoToMag : ModulePatch
 		{
 			var patronIndices = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType[reload.NextReloadType];
 			__instance.AmmoToLoadIntoMag += patronIndices.Length - 1;
-			Logger.LogWarning($"Patch_ReloadInternalMagOperation_AddAmmoToMag");
-		}
-		else
-		{
-			Logger.LogError($"Patch_ReloadInternalMagOperation_AddAmmoToMag: Unknown reload operation?");
 		}
 	}
 }
@@ -313,7 +295,6 @@ public class Patch_WeaponPrefab_CacheInternalObjects : ModulePatch
 				Data = shotgunData,
 			});
 
-			Logger.LogWarning($"Patch_WeaponPrefab_CacheInternalObjects: {__instance._objectInstance.name} {__instance.gameObject.GetInstanceID()}|{__instance._objectInstance.GetInstanceID()}");
 		}
 	}
 
@@ -354,7 +335,6 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
 		if (Plugin.Instance.ShotgunInstances.Remove(weaponPrefab, out var shotgunInstanceData))
 		{
 			shotgunInstanceData.Dispose();
-			Logger.LogWarning($"Patch_AssetPoolObject_OnDestroy: {weaponPrefab.gameObject.name} {weaponPrefab.gameObject.GetInstanceID()}|{weaponPrefab._objectInstance.GetInstanceID()}");
 		}
 	}
 }
