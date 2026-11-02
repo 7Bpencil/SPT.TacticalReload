@@ -176,7 +176,8 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 		if (Plugin.Instance.ShotgunReloads.TryGetValue(__instance.FirearmsAnimator, out var reload) && Plugin.Instance.AssertEqual(__instance, reload.Operation))
 		{
 			var patronIndicesPerReloadType = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType;
-			var nextReloadType = GetNextReloadType(__instance, patronIndicesPerReloadType);
+			var currentMasteringLevel = __instance.Player.Skills.GetMastering(__instance.Weapon.TemplateId)?.Level ?? 0;
+			var nextReloadType = GetNextReloadType(__instance, patronIndicesPerReloadType, currentMasteringLevel);
 			var patronIndices = patronIndicesPerReloadType[nextReloadType];
 			__instance.Firearms.DestroyAllPatronsInWeapon();
 			for (var i = 0; i < patronIndices.Length; i++)
@@ -190,16 +191,16 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 		}
 	}
 
-	public static int GetNextReloadType(ReloadInternalMagOperation operation, int[][] patronIndicesPerReloadType)
+	public static int GetNextReloadType(ReloadInternalMagOperation operation, int[][] patronIndicesPerReloadType, int currentMasteringLevel)
 	{
 		var availableAmmoCount = operation._ammoPack.AmmoCount;
 		var mag = operation.Weapon.GetCurrentMagazine();
 		var magFreeSpace = mag.MaxCount - mag.Count;
 		var ammoToLoadTotal = Math.Min(magFreeSpace, availableAmmoCount);
 		var ammoToLoad = ammoToLoadTotal - operation.AmmoToLoadIntoMag;
-		for (var i = 0; i < patronIndicesPerReloadType.Length; i++)
+		var bestAvailableReloadType = Math.Min(patronIndicesPerReloadType.Length - 1, currentMasteringLevel);
+		for (var reloadType = bestAvailableReloadType; reloadType >= 0; reloadType--)
 		{
-			var reloadType = patronIndicesPerReloadType.Length - 1 - i;
 			var patronsCount = patronIndicesPerReloadType[reloadType].Length;
 			if (ammoToLoad >= patronsCount)
 			{
