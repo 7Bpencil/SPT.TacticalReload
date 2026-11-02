@@ -56,23 +56,26 @@ using ReloadInternalMagOperation = EFT.Player.FirearmController.ReloadInternalMa
 // - always use tactical reload (by default only when rig is full)
 // - min mastery level
 
-// SINGLE events: anim length: 36
+// SINGLE events: anim last key: 35
 // 0.02693603 0.94 Sound ShellOutRig
 // 0.2171717 7.6 Sound ShellIn (when shell comes near port)
 // 0.5785299 20.2 AddAmmoInMag
 // 0.7056451 24.6 Sound HandOff (when metal piece closes)
 
-// TWIN events: anim length: 36
+// TWIN events: anim last key: 35
 // 0.02693603 0.94 Sound ShellOutRig
+// 0.34285714285 Sound ShellInsert
+// 0.51428571428 18 Sound ShellIn
 // 0.5785299 20.2 AddAmmoInMag
 // 0.7056451 24.6 Sound HandOff (when metal piece closes)
 
-// QUAD events: anim length: 61
+// QUAD events: anim last key: 60
 // 0.015 0.94 Sound ShellOutRig
 // 0.1884328 11.3 Sound ShellRattle
+// 0.25 15 Sound ShellInsert
 // 0.3507463 21 Sound ShellIn
-// 0.5951493 35.7 Sound ShellInsert
-// 0.6921642 41.5 Sound ShellIn
+// 0.5951493 35.7 Sound ShellInsert (when first shell touches port)
+// 0.6921642 41.5 Sound ShellIn (when both shells are inside)
 // 0.7333333 43.9 AddAmmoInMag
 // 0.81666666666 49 Sound HandOff
 
@@ -164,7 +167,7 @@ public class ShotgunReloadData : IDisposable
 		var magFreeSpace = mag.MaxCount - mag.Count;
 		var ammoToLoadTotal = Math.Min(magFreeSpace, availableAmmoCount);
 		var ammoToLoad = ammoToLoadTotal - Operation.AmmoToLoadIntoMag;
-		Plugin.Instance.LoggerInstance.LogWarning($"availableAmmoCount: {availableAmmoCount}, magFreeSpace: {magFreeSpace}, ammoToLoadTotal: {ammoToLoadTotal}, ammoToLoad: {ammoToLoad}");
+		Plugin.Instance.LoggerInstance.LogWarning($"availableAmmoCount: {availableAmmoCount}, magFreeSpace: {magFreeSpace}, ammoToLoadTotal: {ammoToLoadTotal}, ammoLoaded: {Operation.AmmoToLoadIntoMag}, ammoToLoad: {ammoToLoad}");
 		var patronsPerReloadType = ShotgunInstanceData.Data.PatronIndicesPerReloadType;
 		for (var i = 0; i < patronsPerReloadType.Length; i++)
 		{
@@ -629,6 +632,11 @@ public class Patch_ReloadInternalMagOperation_Reset : ModulePatch
 		{
 			Plugin.Instance.AssertEqual(__instance, reload.Operation);
 			reload.Dispose();
+			Logger.LogWarning($"Patch_ReloadInternalMagOperation_Reset: Cleaned reload operation");
+		}
+		else
+		{
+			Logger.LogError($"Patch_ReloadInternalMagOperation_Reset: Unknown reload operation?");
 		}
 	}
 }
@@ -646,6 +654,7 @@ public class Patch_ReloadInternalMagOperation_Start : ModulePatch
 		var weaponPrefab = __instance.Controller._weaponPrefab;
 		if (!Plugin.Instance.ShotgunInstances.TryGetValue(weaponPrefab, out var shotgunInstanceData))
 		{
+			Logger.LogError($"Patch_ReloadInternalMagOperation_Start: Unknown weapon?");
 			return;
 		}
 
@@ -654,6 +663,7 @@ public class Patch_ReloadInternalMagOperation_Start : ModulePatch
 			ShotgunInstanceData = shotgunInstanceData,
 			Operation = __instance,
 		});
+		Logger.LogWarning($"Patch_ReloadInternalMagOperation_Start");
 	}
 }
 
@@ -686,6 +696,11 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 			}
 			__instance.FirearmsAnimator.SetMagTypeCurrent(nextReloadType);
 			reload.NextReloadType = nextReloadType;
+			Logger.LogWarning($"Patch_ReloadInternalMagOperation_OnShowAmmo");
+		}
+		else
+		{
+			Logger.LogError($"Patch_ReloadInternalMagOperation_OnShowAmmo: Unknown reload operation?");
 		}
 	}
 }
@@ -704,6 +719,11 @@ public class Patch_ReloadInternalMagOperation_AddAmmoToMag : ModulePatch
 		{
 			var patronIndices = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType[reload.NextReloadType];
 			__instance.AmmoToLoadIntoMag += patronIndices.Length - 1;
+			Logger.LogWarning($"Patch_ReloadInternalMagOperation_AddAmmoToMag");
+		}
+		else
+		{
+			Logger.LogError($"Patch_ReloadInternalMagOperation_AddAmmoToMag: Unknown reload operation?");
 		}
 	}
 }
