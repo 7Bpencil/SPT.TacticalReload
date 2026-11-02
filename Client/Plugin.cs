@@ -12,7 +12,6 @@ using Comfort.Common;
 using EFT.AssetsManager;
 using EFT.InventoryLogic;
 using HarmonyLib;
-using SevenBoldPencil.Common;
 using SPT.Reflection.Patching;
 using System;
 using System.IO;
@@ -102,16 +101,6 @@ public class Plugin : BaseUnityPlugin
 		new Patch_ReloadInternalMagOperation_Start().Enable();
 		new Patch_ReloadInternalMagOperation_OnShowAmmo().Enable();
 		new Patch_ReloadInternalMagOperation_AddAmmoToMag().Enable();
-
-#if DEBUG
-		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Reset)).Enable();
-		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.Start), [typeof(AmmoPack), typeof(Callback)]).Enable();
-		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnAddAmmoInChamber)).Enable();
-		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.OnShowAmmo)).Enable();
-		new PrintDebug(typeof(ReloadInternalMagOperation), nameof(ReloadInternalMagOperation.AddAmmoToMag)).Enable();
-
-		new Patch_AnimationEventsEmitter_SendEvent().Enable();
-#endif
 
 		var assemblyPath = Assembly.GetExecutingAssembly().Location;
         var assemblyDir = Path.GetDirectoryName(assemblyPath);
@@ -339,24 +328,4 @@ public class Patch_AssetPoolObject_OnDestroy : ModulePatch
 	}
 }
 
-public class Patch_AnimationEventsEmitter_SendEvent : ModulePatch
-{
-    protected override MethodBase GetTargetMethod()
-    {
-        return AccessTools.Method(typeof(AnimationEventsEmitter), nameof(AnimationEventsEmitter.SendEvent));
-    }
-
-    [PatchPrefix]
-    public static void Prefix(AnimationEventsEmitter __instance, string functionName, int functionNameHash, AnimationEventParameter parameter, int stateShortNameHash)
-	{
-		if (functionName == "Sound")
-		{
-			Logger.LogWarning($"AnimEvent: {functionName} {parameter.StringParam}");
-		}
-		else
-		{
-			Logger.LogWarning($"AnimEvent: {functionName}");
-		}
-	}
-}
 
