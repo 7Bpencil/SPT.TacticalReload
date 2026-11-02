@@ -5,7 +5,6 @@
 // LICENSE file in the root directory of this source tree.
 //
 
-using AnimationEventSystem;
 using BepInEx;
 using BepInEx.Logging;
 using Comfort.Common;
@@ -174,12 +173,12 @@ public class Patch_ReloadInternalMagOperation_OnShowAmmo : ModulePatch
 		// So we have to do it ourselves by adding OnShowAmmo event
 		// and switching shell model to the next one on it
 
-		// TODO we need to destroy old shell, noticable how they clip in each other
 		if (Plugin.Instance.ShotgunReloads.TryGetValue(__instance.FirearmsAnimator, out var reload) && Plugin.Instance.AssertEqual(__instance, reload.Operation))
 		{
 			var patronIndicesPerReloadType = reload.ShotgunInstanceData.Data.PatronIndicesPerReloadType;
 			var nextReloadType = GetNextReloadType(__instance, patronIndicesPerReloadType);
 			var patronIndices = patronIndicesPerReloadType[nextReloadType];
+			__instance.Firearms.DestroyAllPatronsInWeapon();
 			for (var i = 0; i < patronIndices.Length; i++)
 			{
 				var patronIndex = patronIndices[i];
