@@ -47,7 +47,7 @@ public class ShotgunReloadData : IDisposable
 	public void Dispose() {	}
 }
 
-[BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "0.0.1")]
+[BepInPlugin("7Bpencil.TacticalReload", "7Bpencil.TacticalReload", "1.0.0")]
 public class Plugin : BaseUnityPlugin
 {
 	public static Plugin Instance;
